@@ -1,0 +1,16 @@
+model:
+  name: model_layoutlm.LayoutLMSpade
+  config:
+    layoutlm: microsoft/layoutlm-base-cased
+    layoutlm_extra_config: {}
+    layoutlm_extra_config:
+      local_files_only: true
+    bert: vinai/phobert-base
+    bert_extra_config:
+      local_files_only: true
+    num_fields: 3
+    fields:
+      - questions
+      - answers
+      - headers
+  checkpoint: checkpoint-dp/best-score.pt
