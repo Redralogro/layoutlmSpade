@@ -2,16 +2,17 @@ from pytorch_lightning import LightningModule
 from layoutlm import layoutlmBase
 from PIL import Image
 import torch.nn as nn
-from transformers import AutoModel, AutoTokenizer, AutoConfig
+from transformers import AutoModel, AutoTokenizer, AutoConfig, LayoutLMModel
 from torch import Tensor, optim
 import torch
 from spade_model import RelationTagger
 import numpy as np
+from graph_stuff import get_strings, get_qa
 
 class spadeLayoutLM(LightningModule):
     def __init__(self):
         super(spadeLayoutLM, self).__init__()
-        self.model = layoutlmBase()
+        self.model  = LayoutLMModel.from_pretrained("microsoft/layoutlm-base-uncased")
         self.lr = 1e-4
         self.reduce_size = 256
         self.config = AutoConfig.from_pretrained("microsoft/layoutlm-base-uncased")
@@ -26,8 +27,9 @@ class spadeLayoutLM(LightningModule):
             hidden_size=self.reduce_size,
             n_fields=3,
         )
+        self.lss = nn.CrossEntropyLoss()
     
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: None) -> None:
         return self.model(x)
     
     def configure_optimizers(self):
@@ -56,13 +58,15 @@ class spadeLayoutLM(LightningModule):
         return reduce
 
     def training_step(self, batch, batch_idx):
-        text, label, data_id, coord = batch ['text'], batch['label'], batch['data_id'], batch['coord']
-        w, h = Image.open(data_id).size
-        bboxes = tuple([[ int(x[0][0]*1000/w),int(x[0][1]*1000/h) ,int(x[2][0]*1000/w),int(x[2][1]*1000/h)] for x in coord])
-        last_hidden_state, maps = self.forward(text, bboxes)
+        input_ids = batch["input_ids"].squeeze(0)
+        attention_mask = batch["attention_mask"].squeeze(0)
+        token_type_ids = batch["token_type_ids"].squeeze(0)
+        bbox = batch["bbox"].squeeze(0)
+        x = self.model(input_ids=input_ids, bbox=bbox, attention_mask=attention_mask, token_type_ids=token_type_ids)
+        last_hidden_state, maps = x.last_hidden_state, batch['maps']
         last_hidden_state = self.ln(last_hidden_state)
         reduce = self.reduce_shape(last_hidden_state, maps)
-        loss_clss = nn.CrossEntropyLoss()
+        loss_clss = self.lss 
         
         rel_s = self.rel_s(self.dropout(reduce.unsqueeze(0)))
         S = rel_s
@@ -82,28 +86,29 @@ class spadeLayoutLM(LightningModule):
         # torch.argmax(s0,dim =1).numpy()
         g1 =  g1[:,:,1:-1,1:-1]#reduce
         g0 = g0[:,:,:,1:-1]# reduce
-        graph = np.array(label)
-
+        graph = np.array(batch['label'], dtype='int16')
         label = torch.tensor(graph[0, :3, :]).unsqueeze(0)
+        # graph = np.array(label)
+
         matrix_s = torch.tensor(graph[0, 3:, :]).unsqueeze(0)
         matrix_g = torch.tensor(graph[1, 3:, :]).unsqueeze(0)
-        # label.shape
-        label.shape
-        loss_label_s = loss_clss(s0, label)
-        loss_matrix_s = loss_clss(s1,matrix_s)
-        loss_matrix_g = loss_clss(g1,matrix_g)
+        loss_label_s = loss_clss(s0, label.long())
+        loss_matrix_s = loss_clss(s1,matrix_s.long())
+        loss_matrix_g = loss_clss(g1,matrix_g.long())
         loss = loss_label_s + loss_matrix_s + loss_matrix_g
         print(f'Train/loss: {loss}')
         return loss
     
     def validation_step(self, batch, batch_idx):
-        text, label, data_id, coord = batch ['text'], batch['label'], batch['data_id'], batch['coord']
-        w, h = Image.open(data_id).size
-        bboxes = tuple([[ int(x[0][0]*1000/w),int(x[0][1]*1000/h) ,int(x[2][0]*1000/w),int(x[2][1]*1000/h)] for x in coord])
-        last_hidden_state, maps = self.forward(text, bboxes)
+        input_ids = batch["input_ids"].squeeze(0)
+        attention_mask = batch["attention_mask"].squeeze(0)
+        token_type_ids = batch["token_type_ids"].squeeze(0)
+        bbox = batch["bbox"].squeeze(0)
+        x = self.model(input_ids=input_ids, bbox=bbox, attention_mask=attention_mask, token_type_ids=token_type_ids)
+        last_hidden_state, maps = x.last_hidden_state, batch['maps']
         last_hidden_state = self.ln(last_hidden_state)
         reduce = self.reduce_shape(last_hidden_state, maps)
-        loss_clss = nn.CrossEntropyLoss()
+        loss_clss = self.lss 
         
         rel_s = self.rel_s(self.dropout(reduce.unsqueeze(0)))
         S = rel_s
@@ -119,16 +124,21 @@ class spadeLayoutLM(LightningModule):
         g0,g1 = G[:,:,:3,:],G[:,:,3:,:]
         g1 =  g1[:,:,1:-1,1:-1]#reduce
         g0 = g0[:,:,:,1:-1]# reduce
-        graph = np.array(label)
-
+        graph = np.array(batch['label'], dtype='int16')
         label = torch.tensor(graph[0, :3, :]).unsqueeze(0)
+        # graph = np.array(label)
+
+        
         matrix_s = torch.tensor(graph[0, 3:, :]).unsqueeze(0)
         matrix_g = torch.tensor(graph[1, 3:, :]).unsqueeze(0)
-        # label.shape
-        label.shape
-        loss_label_s = loss_clss(s0, label)
-        loss_matrix_s = loss_clss(s1,matrix_s)
-        loss_matrix_g = loss_clss(g1,matrix_g)
+        loss_label_s = loss_clss(s0, label.long())
+        pred = torch.argmax(s0,dim  =1)
+        question_heads = [i for i, ele in enumerate(pred[0]) if ele != 0]
+        answer_heads = [i for i, ele in enumerate(pred[1]) if ele != 0]
+        header_heads = [i for i, ele in enumerate(pred[2]) if ele != 0]
+        
+        loss_matrix_s = loss_clss(s1,matrix_s.long())
+        loss_matrix_g = loss_clss(g1,matrix_g.long())
         loss = loss_label_s + loss_matrix_s + loss_matrix_g
         print(f'Val/loss: {loss}')
         return loss

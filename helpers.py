@@ -2,6 +2,9 @@ from graph_stuff import *
 from traceback import print_exc
 import numpy as np
 import torch.nn as nn
+from typing import Dict
+import json
+import yaml
 
 dropout = nn.Dropout(0.1)
 class RelationTagger(nn.Module):
@@ -60,6 +63,19 @@ def normalize_box(box, width, height):
     return np.clip(normed, 0, 1000)
 
 
+def load_config(path: str) -> Dict:
+    if path.endswith("yml"):
+        with open(path,"r") as f:
+            config = yaml.load(stream=f, Loader=yaml.FullLoader)
+    elif path.endswith("json"):
+        with open(path,"r") as f:
+            config = json.load(stream=f)
+    elif path.endswith("yaml"):
+        with open(path,"r") as f:
+            config = yaml.load(stream=f, Loader=yaml.FullLoader)
+    else:
+        raise "Invalid file format"
+    return config
 
 def parse_input(
     image,
