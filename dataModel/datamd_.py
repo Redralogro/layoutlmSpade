@@ -45,7 +45,9 @@ class DpDataSet(Dataset):
         input_ids,attention_mask,token_type_ids,bbox,maps = self.handle_input(
             self.items[idx]['text'], self.items[idx]['coord'], self.items[idx]['size'])
         # sample = {'text':text, 'label':label, 'size': size_img, 'coord':coord }
-        return {'input_ids': input_ids, 'attention_mask': attention_mask,'token_type_ids':token_type_ids,'bbox':bbox , 'maps': maps ,'label':self.items[idx]['label']}
+        return {'input_ids': input_ids, 'attention_mask': attention_mask,
+                'token_type_ids':token_type_ids,'bbox':bbox , 'maps': maps ,
+                'label':self.items[idx]['label'], 'text': self.items[idx]['text']}
 
     
     def handle_input(self,words, coord, size_):
