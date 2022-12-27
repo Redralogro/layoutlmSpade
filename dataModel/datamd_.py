@@ -18,9 +18,11 @@ class DpDataSet(Dataset):
 
         
     def get_jsonl(self):
-        dir_list = os.listdir(self.path)
-        dir_id_list =  [self.path+'/'+ x for x in dir_list]
-        id_list = [ json.load(open(f))  for f in dir_id_list]
+        # dir_list = os.listdir(self.path)
+        # dir_id_list =  [self.path+'/'+ x for x in dir_list]
+        # id_list = [ json.load(open(f))  for f in dir_id_list]
+        id_list = json.load(open(self.path))
+
         return id_list
     
     def __len__(self):
