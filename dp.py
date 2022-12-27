@@ -1,12 +1,16 @@
 import torch
-from transformers import AutoModel, AutoTokenizer, AutoConfig, BatchEncoding, BertModel,LayoutLMModel
+from transformers import (AutoConfig, AutoModel, AutoTokenizer, BatchEncoding,
+                          BertModel, LayoutLMModel)
+
 tokenizer = AutoTokenizer.from_pretrained("microsoft/layoutlm-base-uncased")
 model = LayoutLMModel.from_pretrained("microsoft/layoutlm-base-uncased")
 config = AutoConfig.from_pretrained("microsoft/layoutlm-base-uncased")
 import json
+
 import numpy as np
 from PIL import Image
-from helpers import parse_input , dropout , RelationTagger
+
+from helpers import RelationTagger, dropout, parse_input
 
 image_file = '/home/dark_hold/AI/ocr/test_images/test.jpg'
 data = json.load(open('./data/dp_long.jonl.jsonl'))

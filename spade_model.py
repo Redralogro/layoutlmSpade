@@ -1,5 +1,7 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
+
+
 class RelationTagger(nn.Module):
     def __init__(self, n_fields, hidden_size, head_p_dropout=0.1):
         super().__init__()

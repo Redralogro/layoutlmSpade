@@ -1,17 +1,17 @@
 # To be continue ...
-from typing import Dict
 from datetime import datetime
-from pytorch_lightning import Trainer
-from pytorch_lightning.loggers import MLFlowLogger
-from transformers import AutoTokenizer
-from model import layoutlmBase
-from helpers import load_config
-from pytorch_lightning.loggers import MLFlowLogger
+from typing import Dict
+
 import mlflow
 import torch
+from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.loggers import MLFlowLogger
+from transformers import AutoTokenizer
+
 from dataModel.dataLoader import DpDataMoDule
-from model import spadeLayoutLM
+from helpers import load_config
+from model import layoutlmBase, spadeLayoutLM
 
 config: Dict = load_config("main.yaml")
 logger = MLFlowLogger("eKyC/DP", tracking_uri="http://10.10.1.37:5000")

@@ -1,5 +1,6 @@
-import torch
 import networkx as nx
+import torch
+
 
 def map_token(tokenizer, texts, offset=0):
     map = [[i] for i in range(offset)] + [[] for _ in texts]

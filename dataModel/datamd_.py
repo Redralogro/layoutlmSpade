@@ -1,18 +1,11 @@
-import os
-import random
-import re
-import os
-from sklearn.model_selection import train_test_split
-import cv2
-import imgaug.augmenters as iaa
-from transformers import AutoModel, AutoTokenizer
-import numpy as np
-import torch
-from PIL import Image
-from torch.utils.data import Dataset
-import numpy as np
-from torchvision import transforms
 import json
+import os
+
+import torch
+from torch.utils.data import Dataset
+from torchvision import transforms
+from transformers import AutoTokenizer
+
 trans = transforms.Compose([transforms.ToTensor()])
 
 class DpDataSet(Dataset):
