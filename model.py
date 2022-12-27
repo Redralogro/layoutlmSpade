@@ -41,7 +41,7 @@ class spadeLayoutLM(LightningModule):
         # reduce = torch.zeros(768)
         reduce =[]
         for g_token in  maps:
-            ten = torch.zeros(self.reduce_size)
+            ten = torch.zeros(self.reduce_size).cuda()
             for ele in g_token:
                 # print(ele)
                 ten += last_hidden_state[0][i]
@@ -86,7 +86,7 @@ class spadeLayoutLM(LightningModule):
         # torch.argmax(s0,dim =1).numpy()
         g1 =  g1[:,:,1:-1,1:-1]#reduce
         g0 = g0[:,:,:,1:-1]# reduce
-        graph = np.array(batch['label'], dtype='int16')
+        graph = torch.tensor(batch['label']).cuda()
         label = torch.tensor(graph[0, :3, :]).unsqueeze(0)
         # graph = np.array(label)
 
@@ -124,7 +124,8 @@ class spadeLayoutLM(LightningModule):
         g0,g1 = G[:,:,:3,:],G[:,:,3:,:]
         g1 =  g1[:,:,1:-1,1:-1]#reduce
         g0 = g0[:,:,:,1:-1]# reduce
-        graph = np.array(batch['label'], dtype='int16')
+        graph = torch.tensor(batch['label']).cuda()
+        # graph.copy()
         label = torch.tensor(graph[0, :3, :]).unsqueeze(0)
         # graph = np.array(label)
 
@@ -133,9 +134,9 @@ class spadeLayoutLM(LightningModule):
         matrix_g = torch.tensor(graph[1, 3:, :]).unsqueeze(0)
         loss_label_s = loss_clss(s0, label.long())
         pred = torch.argmax(s0,dim  =1)
-        question_heads = [i for i, ele in enumerate(pred[0]) if ele != 0]
-        answer_heads = [i for i, ele in enumerate(pred[1]) if ele != 0]
-        header_heads = [i for i, ele in enumerate(pred[2]) if ele != 0]
+        # question_heads = [i for i, ele in enumerate(pred[0]) if ele != 0]
+        # answer_heads = [i for i, ele in enumerate(pred[1]) if ele != 0]
+        # header_heads = [i for i, ele in enumerate(pred[2]) if ele != 0]
         
         loss_matrix_s = loss_clss(s1,matrix_s.long())
         loss_matrix_g = loss_clss(g1,matrix_g.long())

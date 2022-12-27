@@ -34,7 +34,10 @@ class DpDataSet(Dataset):
         return len(self.items)
 
     def get_data(self):
-        return [{'text':item['text'], 'label':item['label'], 'size':Image.open(item['data_id']).size, 'coord':item['coord'] } for item in self.jsons]
+        return [{'text':item['text'], 'label':item['label'],
+        'size':[int(item['img_sz']['width']),
+                int(item['img_sz']['height'])],
+        'coord':item['coord'] } for item in self.jsons]
 
     def __getitem__(self,idx):
         input_ids,attention_mask,token_type_ids,bbox,maps = self.handle_input(

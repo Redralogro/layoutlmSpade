@@ -27,7 +27,7 @@ trainer = Trainer(accelerator='gpu',
                   auto_lr_find=True,
                   auto_scale_batch_size='binsearch',
                   callbacks=[lr_monitor],
-                  log_every_n_steps=20
+                  log_every_n_steps=5
                   )
 
 DpModel = spadeLayoutLM()
