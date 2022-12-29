@@ -11,9 +11,17 @@ from graph_stuff import get_strings, get_qa
 import networkx as nx
 from jsonmerge import merge
 from datetime import datetime
+from modeling.layoutlm import LayoutlmEmbeddings
+from helpers import b_loss
+import mlflow
+from mlflow import log_metric, log_param, log_artifacts
 
-model = LayoutLMModel.from_pretrained("microsoft/layoutlm-base-uncased").cuda()
+mlflow.set_tracking_uri("http://10.10.1.37:5000")
+mlflow.set_experiment("eKyC/DP")
+
 config = AutoConfig.from_pretrained("microsoft/layoutlm-base-uncased")
+model = LayoutLMModel.from_pretrained("microsoft/layoutlm-base-uncased").cuda()
+# model =  LayoutlmEmbeddings(config).cuda()
 tokenizer = AutoTokenizer.from_pretrained("microsoft/layoutlm-base-uncased")
 
 lr = 1e-4
@@ -105,6 +113,8 @@ for epoch in tqdm(range(epochs)):
         attention_mask = sample_batched["attention_mask"].squeeze(0).cuda()
         token_type_ids = sample_batched["token_type_ids"].squeeze(0).cuda()
         bbox = sample_batched["bbox"].squeeze(0).cuda()
+        ex_bboxes = bbox.squeeze(0)/1000
+        print(ex_bboxes.shape)
         maps = sample_batched['maps']
         # print(input_ids.shape,attention_mask.shape,bbox.shape,token_type_ids.shape, np.array (maps).shape)
         optimizer.zero_grad()
@@ -133,11 +143,34 @@ for epoch in tqdm(range(epochs)):
         matrix_g = torch.tensor(extend_matrix(graph[1, 3:, :])).unsqueeze(0).cuda()
 
 
+        # print()
+        text = [tokenizer.cls_token] + [x[0] for x in sample_batched["text"]] + [tokenizer.sep_token]
+        # print(text)
+        label_actual = label_s.squeeze(0)
+        S_ = extend_matrix(graph[0, 3:, :])
+        G_ = extend_matrix(graph[1, 3:, :])
+        question_heads = [i for i, ele in enumerate(label_actual[0]) if ele != 0]
+        answer_heads = [i for i, ele in enumerate(label_actual[1]) if ele != 0]
+        header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
+
+        pred_matrix_s = torch.softmax(s1,dim=1)
+        pred_matrix_s = torch.argmax(pred_matrix_s,dim=1).squeeze(0)
+
+        pred_label = torch.argmax(s0,dim=1).squeeze(0)
+        pred_S = np.array([list(x) for x in np.array(pred_matrix_s.cpu().numpy())])
+        # pred_G = np.array([list(x) for x in np.array(pred_matrix_g.cpu().numpy())])
+        pred_question_heads = [i for i, ele in enumerate(pred_label[0]) if ele != 0]
+        pred_answer_heads = [i for i, ele in enumerate(pred_label[1]) if ele != 0]
+        bbox_loss = b_loss(S_,pred_S,ex_bboxes,(question_heads,
+                        answer_heads,
+                        pred_answer_heads,
+                        pred_answer_heads)).cuda()
+        
         loss_label_s = loss_clss(s0, label_s.long())
         loss_label_g = loss_clss(g0, label_g.long())
         loss_matrix_s = loss_clss(s1,matrix_s.long())
         loss_matrix_g = loss_clss(g1,matrix_g.long())
-        loss = loss_label_s + loss_matrix_s + loss_label_g + loss_matrix_g
+        loss = loss_label_s + loss_matrix_s + loss_label_g + loss_matrix_g + bbox_loss.long()
         loss.backward()
         # loss_matrix_s.backward()
         # loss_matrix_g.backward()
@@ -146,9 +179,15 @@ for epoch in tqdm(range(epochs)):
         print ('loss_label_g', loss_label_g.detach())
         print ('loss_matrix_s', loss_matrix_s.detach())
         print ('loss_matrix_g', loss_matrix_g.detach())
-        # print()
-        text = [tokenizer.cls_token] + [x[0] for x in sample_batched["text"]] + [tokenizer.sep_token]
-        # print(text)
+        print ('loss_bboxes', bbox_loss.long())
+        log_metric ('loss', loss.detach(),epoch)
+        log_metric ('loss_label_s', loss_label_s.detach(),epoch)
+        log_metric ('loss_label_g', loss_label_g.detach(),epoch)
+        log_metric ('loss_matrix_s', loss_matrix_s.detach(),epoch)
+        log_metric ('loss_matrix_g', loss_matrix_g.detach(),epoch)
+        log_metric ('loss_bboxes', bbox_loss.long(),epoch)
+
+
         with torch.no_grad():
             ############[GROUND TRUTH]####################
             label_actual = label_s.squeeze(0)
