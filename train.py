@@ -10,8 +10,13 @@ from pytorch_lightning.loggers import MLFlowLogger
 from transformers import AutoTokenizer
 
 from dataModel.dataLoader import DpDataMoDule
+<<<<<<< HEAD
 from helpers import load_config
 from model import layoutlmBase, spadeLayoutLM
+=======
+from model import spadeLayoutLM
+from modeling.warped_model import LitLayoutParsing
+>>>>>>> c0ed2d92916d2be920acb9b7a5e9985d507b999c
 
 config: Dict = load_config("main.yaml")
 logger = MLFlowLogger("eKyC/DP", tracking_uri="http://10.10.1.37:5000")
@@ -30,7 +35,8 @@ trainer = Trainer(accelerator='gpu',
                   log_every_n_steps=5
                   )
 
-DpModel = spadeLayoutLM()
+# DpModel = spadeLayoutLM()
+DpModel = LitLayoutParsing()
 trainer.fit(model= DpModel, datamodule= data_module)
 now = datetime.now()
 now = now.strftime("%d-%m-%Y_%H-%M-%S")
