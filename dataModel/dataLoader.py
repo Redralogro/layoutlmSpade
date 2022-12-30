@@ -9,8 +9,8 @@ from dataModel.datamd_ import DpDataSet
 class DpDataMoDule(LightningDataModule):
     def __init__(self,config: Dict) -> None:
         super(DpDataMoDule, self).__init__()
-        self.data_path = config['data_path']
-        self.batch_size = config.get('batch_size', 2) 
+        self.data_path = './data/processed/data_cccd.jsonl'
+        # self.batch_size = config.get('batch_size', 1) 
         self.save_hyperparameters()
         self.prepare_data()
 
@@ -18,10 +18,11 @@ class DpDataMoDule(LightningDataModule):
         pass
 
     def prepare_data(self) -> None:
-        trainData = DpDataSet(path=self.data_path + '/data_train.jsonl')
-        valData = DpDataSet(path=self.data_path + '/data_val.jsonl')
+        # trainData = DpDataSet(path=self.data_path + '/data_train.jsonl')
+        # valData = DpDataSet(path=self.data_path + '/data_val.jsonl')
+        trainData = DpDataSet(path='./data/processed/data_cccd.jsonl')
         self.train_loader = DataLoader(trainData, batch_size= 1, shuffle= True, num_workers= 4)
-        self.val_loader = DataLoader(valData, batch_size= 1, shuffle= False, num_workers= 4)
+        self.val_loader = DataLoader(trainData, batch_size= 1, shuffle= False, num_workers= 1)
         # return super().prepare_data()
     
     def train_dataloader(self) -> None:

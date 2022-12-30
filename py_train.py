@@ -15,7 +15,7 @@ from modeling.layoutlm import LayoutlmEmbeddings
 from helpers import b_loss
 import mlflow
 from mlflow import log_metric, log_param, log_artifacts
-
+from loss import BboxLoss
 mlflow.set_tracking_uri("http://10.10.1.37:5000")
 mlflow.set_experiment("eKyC/DP")
 
@@ -27,7 +27,7 @@ tokenizer = AutoTokenizer.from_pretrained("microsoft/layoutlm-base-uncased")
 lr = 1e-4
 optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=0.00005)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)  
-trainData = DpDataSet(path='./data/processed/data_train.jsonl')
+trainData = DpDataSet(path='./data/processed/data_cccd.jsonl')
 train_loader =  DataLoader(trainData, batch_size= 1, shuffle= False, num_workers= 4)
 val_loader =  DataLoader(trainData, batch_size= 1, shuffle= False, num_workers= 1)
 from spade_model import RelationTagger
@@ -103,7 +103,7 @@ def grouth_truth(text_,label_):
 
 
 loss_clss = nn.CrossEntropyLoss(weight=torch.tensor([0.1,1]).cuda())
-
+bbox_loss_fn = BboxLoss().cuda()
 epochs = 2000
 for epoch in tqdm(range(epochs)):
     model.train()
@@ -161,7 +161,7 @@ for epoch in tqdm(range(epochs)):
         # pred_G = np.array([list(x) for x in np.array(pred_matrix_g.cpu().numpy())])
         pred_question_heads = [i for i, ele in enumerate(pred_label[0]) if ele != 0]
         pred_answer_heads = [i for i, ele in enumerate(pred_label[1]) if ele != 0]
-        bbox_loss = b_loss(S_,pred_S,ex_bboxes,(question_heads,
+        bbox_loss = bbox_loss_fn(S_,pred_S,ex_bboxes,(question_heads,
                         answer_heads,
                         pred_answer_heads,
                         pred_answer_heads)).cuda()
@@ -170,7 +170,7 @@ for epoch in tqdm(range(epochs)):
         loss_label_g = loss_clss(g0, label_g.long())
         loss_matrix_s = loss_clss(s1,matrix_s.long())
         loss_matrix_g = loss_clss(g1,matrix_g.long())
-        loss = loss_label_s + loss_matrix_s + loss_label_g + loss_matrix_g + bbox_loss.long()
+        loss = loss_label_s + loss_matrix_s + loss_label_g + loss_matrix_g + bbox_loss
         loss.backward()
         # loss_matrix_s.backward()
         # loss_matrix_g.backward()
@@ -179,13 +179,13 @@ for epoch in tqdm(range(epochs)):
         print ('loss_label_g', loss_label_g.detach())
         print ('loss_matrix_s', loss_matrix_s.detach())
         print ('loss_matrix_g', loss_matrix_g.detach())
-        print ('loss_bboxes', bbox_loss.long())
+        print ('loss_bboxes', bbox_loss.detach())
         log_metric ('loss', loss.detach(),epoch)
         log_metric ('loss_label_s', loss_label_s.detach(),epoch)
         log_metric ('loss_label_g', loss_label_g.detach(),epoch)
         log_metric ('loss_matrix_s', loss_matrix_s.detach(),epoch)
         log_metric ('loss_matrix_g', loss_matrix_g.detach(),epoch)
-        log_metric ('loss_bboxes', bbox_loss.long(),epoch)
+        log_metric ('loss_bboxes', bbox_loss.detach(),epoch)
 
 
         with torch.no_grad():
@@ -299,7 +299,7 @@ for epoch in tqdm(range(epochs)):
     #             # print(np.shape(ans))
     #             print(f'[PREDICT VAL]: Ques:{val_pred_ques} \n Ans: {val_pred_ans}')
 
-    if epoch % 20 ==0:
+    if epoch % 100 ==0:
         now = datetime.now()
         now = now.strftime("%d-%m-%Y_%H-%M-%S")
         with open(f"resources/checkpoints/DP_model{now}.pt", "wb") as f:
