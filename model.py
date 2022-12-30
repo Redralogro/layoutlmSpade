@@ -87,11 +87,11 @@ class spadeLayoutLM(LightningModule):
         g1 =  g1[:,:,1:-1,1:-1]#reduce
         g0 = g0[:,:,:,1:-1]# reduce
         graph = torch.tensor(batch['label']).cuda()
-        label = torch.tensor(graph[0, :3, :]).unsqueeze(0)
+        label = graph[0, :3, :].unsqueeze(0)
         # graph = np.array(label)
 
-        matrix_s = torch.tensor(graph[0, 3:, :]).unsqueeze(0)
-        matrix_g = torch.tensor(graph[1, 3:, :]).unsqueeze(0)
+        matrix_s = graph[0, 3:, :].unsqueeze(0)
+        matrix_g = graph[1, 3:, :].unsqueeze(0)
         loss_label_s = loss_clss(s0, label.long())
         loss_matrix_s = loss_clss(s1,matrix_s.long())
         loss_matrix_g = loss_clss(g1,matrix_g.long())
@@ -126,12 +126,12 @@ class spadeLayoutLM(LightningModule):
         g0 = g0[:,:,:,1:-1]# reduce
         graph = torch.tensor(batch['label']).cuda()
         # graph.copy()
-        label = torch.tensor(graph[0, :3, :]).unsqueeze(0)
+        label = graph[0, :3, :].unsqueeze(0)
         # graph = np.array(label)
 
         
-        matrix_s = torch.tensor(graph[0, 3:, :]).unsqueeze(0)
-        matrix_g = torch.tensor(graph[1, 3:, :]).unsqueeze(0)
+        matrix_s = graph[0, 3:, :].unsqueeze(0)
+        matrix_g = graph[1, 3:, :].unsqueeze(0)
         loss_label_s = loss_clss(s0, label.long())
         pred = torch.argmax(s0,dim  =1)
         # question_heads = [i for i, ele in enumerate(pred[0]) if ele != 0]

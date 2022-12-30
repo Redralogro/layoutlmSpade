@@ -41,6 +41,62 @@ class RelationTagger(nn.Module):
         return score
 
 
+# def b_loss(graph_matrix,graph_matrix_pred,ex_bboxes,list_heads):
+#     question_heads, answer_heads,pred_question_heads ,pred_answer_heads  = list_heads
+#     def bbox_loss(graph,ex_bboxes,heads):
+#         temp = []
+#         G = nx.Graph(graph) # s
+#         for index in heads:
+#             dfs = list(nx.dfs_edges(G, source=int(index)))
+#             dfs
+#             if  dfs == []:
+#                 header = [int(index)]
+#             else: header =  [dfs[0][0]] + [x[1]  for i,x in enumerate (dfs)]
+#             list_temp = []
+#             for i in header:
+#                 [x1,y1,x2,y2] = ex_bboxes[int(i)]
+#                 # print(abs(x2 -x1) + abs(y2 -y1) )
+#                 list_temp.append(abs(x2 -x1) + abs(y2 -y1))
+#             temp.append(sum(list_temp)/len(list_temp))
+#         try: 
+#             return sum(temp)/len(temp)
+#         except ZeroDivisionError:
+#             return 0
+    
+#     que_loss = bbox_loss(graph_matrix, ex_bboxes,question_heads)
+#     ans_loss = bbox_loss(graph_matrix, ex_bboxes,answer_heads)
+#     pred_ques_loss =  bbox_loss(graph_matrix_pred, ex_bboxes,pred_question_heads)
+#     pred_ans_loss =  bbox_loss(graph_matrix_pred, ex_bboxes,pred_answer_heads)
+#     sum_loss = abs(pred_ques_loss - que_loss) +abs(pred_ans_loss - ans_loss)
+#     return torch.tensor(sum_loss, requires_grad=True)
+
+def b_loss(graph_matrix,graph_matrix_S,ex_bboxes,list_heads):
+    question_heads, answer_heads,pred_question_heads ,pred_answer_heads  = list_heads
+    def bbox_loss(graph,ex_bboxes,heads):
+        temp = []
+        G = nx.Graph(graph) # s
+        for index in heads:
+            dfs = list(nx.dfs_edges(G, source=int(index)))
+            dfs
+            if  dfs == []:
+                header = [int(index)]
+            else: header =  [dfs[0][0]] + [x[1]  for i,x in enumerate (dfs)]
+            list_temp = []
+            for i in header:
+                [x1,y1,x2,y2] = ex_bboxes[int(i)]
+                list_temp.append(abs(x2 -x1) + abs(y2 -y1))
+            temp.append(sum(list_temp)/len(list_temp))
+        try: 
+            return sum(temp)/len(temp)
+        except ZeroDivisionError:
+            return 0
+    
+    que_loss = bbox_loss(graph_matrix, ex_bboxes,question_heads)
+    ans_loss = bbox_loss(graph_matrix, ex_bboxes,answer_heads)
+    pred_ques_loss =  bbox_loss(graph_matrix_S, ex_bboxes,pred_question_heads)
+    pred_ans_loss =  bbox_loss(graph_matrix_S, ex_bboxes,pred_answer_heads)
+    sum_loss = abs(pred_ques_loss - que_loss) +abs(pred_ans_loss - ans_loss)
+    return torch.tensor(sum_loss, requires_grad=True)
 
 def tensorize(x):
     if isinstance(x, np.ndarray):

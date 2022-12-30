@@ -105,7 +105,7 @@ def graph2span(adj: torch.Tensor, adj_g: torch.Tensor):
 
 
 def get_qa(index, ques: list,ans: list, graph):
-    assert len(ques) == len(ans)
+    # assert len(ques) == len(ans)
     G = nx.Graph(graph) # group
     dfs = list(nx.dfs_edges(G, source=int(index)))
     # dfs
