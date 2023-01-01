@@ -12,10 +12,14 @@ from helpers import load_config
 from dataModel.dataLoader import DpDataMoDule
 from model import spadeLayoutLM
 from modeling.warped_model import LitLayoutParsing
+from os import environ as env
+
+from dotenv import load_dotenv
+load_dotenv()
 
 config: Dict = load_config("main.yaml")
-logger = MLFlowLogger("eKyC/DP", tracking_uri="http://10.10.1.37:5000")
-mlflow.set_tracking_uri("http://10.10.1.37:5000")
+logger = MLFlowLogger(env['EXP'], tracking_uri=env['HOSTNAME'])
+mlflow.set_tracking_uri(env['HOSTNAME'])
 
 
 data_module = DpDataMoDule(config=config)
@@ -23,7 +27,7 @@ lr_monitor = LearningRateMonitor(logging_interval='step')
 trainer = Trainer(accelerator='gpu',
                   devices=1,
                   logger=logger,
-                  max_epochs=200,
+                  max_epochs=100,
                   auto_lr_find=True,
                   auto_scale_batch_size='binsearch',
                   callbacks=[lr_monitor],
@@ -35,5 +39,6 @@ DpModel = LitLayoutParsing()
 trainer.fit(model=DpModel, datamodule=data_module)
 now = datetime.now()
 now = now.strftime("%d-%m-%Y_%H-%M-%S")
+print('Export .pt')
 with open(f"./resources/checkpoints/DP_{now}.pt", "wb") as f:
     torch.save(DpModel.state_dict(), f)

@@ -226,7 +226,5 @@ class LitLayoutParsing(LightningModule):
                 #     print(qu_s[0], an_s[0])
                 print('============================================================')
                 print(f'[PREDICT MAPPING]: ques: {qu_s} \n ans: {an_s}')
-                self.log(
-                    'Val_:', f'[PREDICT MAPPING]: ques: {qu_s} \n ans: {an_s}')
 
         return 0
