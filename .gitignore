@@ -10,3 +10,5 @@ spade-label-tool-1.4.1.zip
 resources/
 log.text
 log_new.text
+dependency_parsing.ipynb
+.env

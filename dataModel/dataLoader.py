@@ -21,8 +21,8 @@ class DpDataMoDule(LightningDataModule):
         # trainData = DpDataSet(path=self.data_path + '/data_train.jsonl')
         # valData = DpDataSet(path=self.data_path + '/data_val.jsonl')
         trainData = DpDataSet(path='./data/processed/data_cccd.jsonl')
-        self.train_loader = DataLoader(trainData, batch_size= 1, shuffle= True, num_workers= 4)
-        self.val_loader = DataLoader(trainData, batch_size= 1, shuffle= False, num_workers= 1)
+        self.train_loader = DataLoader(trainData, batch_size= 1, shuffle= True, num_workers= 0)
+        self.val_loader = DataLoader(trainData, batch_size= 1, shuffle= False, num_workers= 0)
         # return super().prepare_data()
     
     def train_dataloader(self) -> None:
