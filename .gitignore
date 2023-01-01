@@ -9,8 +9,10 @@ spade-label-tool-1.4.1.zip
 6/
 resources/
 log.text
-log_new.text
 dependency_parsing.ipynb
 .env
 grooornd/
 268277101654231582/
+notebook/
+modeling/__pycache__/
+dataModel/__pycache__/
