@@ -6,6 +6,11 @@ from typing import Dict
 import json
 import yaml
 
+import torch
+# from modeling.warped_model import LitLayoutParsing
+import numpy as np
+from graph_stuff import get_strings
+import networkx as nx
 
 class RelationTagger(nn.Module):
     def __init__(self, n_fields, hidden_size, head_p_dropout=0.1):
@@ -107,3 +112,38 @@ def load_config(path: str) -> Dict:
     else:
         raise "Invalid file format"
     return config
+
+
+def infer(S,G,text):
+    s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
+    g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
+    pred_matrix_s = torch.softmax(s1, dim=1)
+    pred_matrix_s = torch.argmax(pred_matrix_s, dim=1).squeeze(0)
+    pred_matrix_g = torch.softmax(g1, dim=1)
+    pred_matrix_g = torch.argmax(pred_matrix_g, dim=1).squeeze(0)
+    pred_label = torch.argmax(s0, dim=1).squeeze(0)
+    pred_S = np.array([list(x) for x in np.array(pred_matrix_s.cpu().numpy())])
+    pred_G = np.array([list(x) for x in np.array(pred_matrix_g.cpu().numpy())])
+    pred_question_heads = [
+        i for i, ele in enumerate(pred_label[0]) if ele != 0]
+    pred_answer_heads = [
+        i for i, ele in enumerate(pred_label[1]) if ele != 0]
+    
+    pred_ques = get_strings(pred_question_heads, text, pred_S)
+        # print(np.shape(ques))
+
+    pred_ans = get_strings(pred_answer_heads, text, pred_S)
+    print(f'[PREDICT]: Ques:{pred_ques} \n Ans: {pred_ans}')
+
+    for ques_idx in pred_question_heads:
+            G_pred = nx.Graph(pred_G)  # group
+            dfs = list(nx.dfs_edges(G_pred, source=int(ques_idx)))
+            # print(dfs)
+            if len(dfs) != 0:
+                q, a = dfs[0]
+                qu_s = [qs[1] for qs in pred_ques if q in qs]
+                an_s = [as_[1] for as_ in pred_ans if a in as_]
+                # if len(qu_s)== len(an_s):
+                #     print(qu_s[0], an_s[0])
+                print('============================================================')
+                print(f'[PREDICT MAPPING]: ques: {qu_s} \n ans: {an_s}')

@@ -9,7 +9,9 @@ from spade_model import RelationTagger
 from loss import BboxLoss
 from graph_stuff import get_strings, get_qa
 import networkx as nx
-
+from helpers import infer
+import json
+from datetime import datetime
 
 class LitLayoutParsing(LightningModule):
     def __init__(self):
@@ -20,11 +22,10 @@ class LitLayoutParsing(LightningModule):
             "microsoft/layoutlm-base-uncased")
         self.lr = 1e-4
         self.reduce_size = 256
-        self.config = AutoConfig.from_pretrained(
-            "microsoft/layoutlm-base-uncased")
-        self.ln = nn.Linear(self.config.hidden_size, self.reduce_size)
+        self.ln = nn.Linear(self.model.config.hidden_size, self.reduce_size)
         self.dropout = nn.Dropout(0.1)
-
+        self.zeros_temp = torch.zeros(self.reduce_size)
+        
         self.rel_s = RelationTagger(
             hidden_size=self.reduce_size,
             n_fields=3,
@@ -53,9 +54,10 @@ class LitLayoutParsing(LightningModule):
     def reduce_shape(self, last_hidden_state, maps):
         i = 0
         # reduce = torch.zeros(768)
+        device = last_hidden_state.device
         reduce = []
         for g_token in maps:
-            ten = torch.zeros(self.reduce_size).cuda()
+            ten = self.zeros_temp.to(device)
             for ele in g_token:
                 # print(ele)
                 ten += last_hidden_state[0][i]
@@ -65,14 +67,32 @@ class LitLayoutParsing(LightningModule):
             ten = ten/len(g_token)
             # print(ten)
             reduce.append(ten)
-            # reduce = torch.cat((reduce,ten),-1)
-        # print(np.array(reduce).shape)
-        # print(reduce)
-        reduce = torch.stack(reduce)
+        reduce = torch.stack(reduce).to(device)
         return reduce
 
     def forward(self, x: tuple) -> None:
-        input_ids, bbox, attention_mask, token_type_ids, maps = x
+        words, normalized_word_boxes = x
+        device = normalized_word_boxes.device
+        encoding = self.tokenizer(" ".join(words), return_tensors='pt')
+        token_boxes = []
+        i =0
+        maps = []
+        maps.extend([[i]])
+
+        for word, box in zip(words, normalized_word_boxes):
+            word_tokens = self.tokenizer.tokenize(word)
+            token_boxes.extend([box] * len(word_tokens))
+            i += 1
+            maps.extend([[i]*len(word_tokens)])
+
+        maps.extend([[i+1]])
+
+        token_boxes = [[0, 0, 0, 0]] + token_boxes + [[1000, 1000, 1000, 1000]]
+
+        bbox = torch.tensor([token_boxes]).to(device)
+        input_ids = encoding["input_ids"].to(device)
+        attention_mask = encoding["attention_mask"].to(device)
+        token_type_ids = encoding["token_type_ids"].to(device)
         outputs = self.model(input_ids=input_ids, bbox=bbox,
                              attention_mask=attention_mask, token_type_ids=token_type_ids)
         last_hidden_state = self.ln(outputs.last_hidden_state)
@@ -89,14 +109,12 @@ class LitLayoutParsing(LightningModule):
         return optimizer
 
     def training_step(self, batch, batch_idx) -> None:
-        input_ids = batch["input_ids"].squeeze(0)
-        attention_mask = batch["attention_mask"].squeeze(0)
-        token_type_ids = batch["token_type_ids"].squeeze(0)
         bbox = batch["bbox"].squeeze(0)
-        maps = batch['maps']
+        # maps = batch['maps']
+        normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
         ex_bboxes = bbox.squeeze(0)/1000
         S, G = self.forward(
-            (input_ids, bbox, attention_mask, token_type_ids, maps)
+            ([x[0]for x in batch["text"]], normalized_word_boxes)
         )
         s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
         g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
@@ -132,7 +150,10 @@ class LitLayoutParsing(LightningModule):
                                                               answer_heads,
                                                               pred_question_heads,
                                                               pred_answer_heads))
-
+        with torch.no_grad():
+            text = [self.tokenizer.cls_token] + [x[0] for x in batch["text"]] + [self.tokenizer.sep_token]
+            print('#########[TRAINING]###################\n')
+            infer(S,G,text)
         loss_label_s = self.loss_clss(s0, label_s.long())
         loss_label_g = self.loss_clss(g0, label_g.long())
         loss_matrix_s = self.loss_clss(s1, matrix_s.long())
@@ -144,9 +165,10 @@ class LitLayoutParsing(LightningModule):
         print('loss_label_g', loss_label_g.detach())
         print('loss_matrix_s', loss_matrix_s.detach())
         print('loss_matrix_g', loss_matrix_g.detach())
-        print('loss_bboxes', bbox_loss)
+        print('loss_bboxes', bbox_loss.detach())
+
         self.log('Train/loss', loss.detach())
-        self.log('Train/loss_bboxes', bbox_loss)
+        self.log('Train/loss_bboxes', bbox_loss.detach())
         self.log('Train/loss_label_s', loss_label_s.detach())
         self.log('Train/loss_label_g', loss_label_g.detach())
         self.log('Train/loss_matrix_s', loss_matrix_s.detach())
@@ -156,13 +178,16 @@ class LitLayoutParsing(LightningModule):
 
     @torch.no_grad()
     def validation_step(self, batch, batch_idx) -> None:
-        input_ids = batch["input_ids"].squeeze(0)
-        attention_mask = batch["attention_mask"].squeeze(0)
-        token_type_ids = batch["token_type_ids"].squeeze(0)
-        bbox = batch["bbox"].squeeze(0)
-        maps = batch['maps']
+        print('#########[VALIDATING]###################\n')
+        # bbox = batch["bbox"].squeeze(0)
+        # maps = batch['maps']
+        normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
+        # S, G = self.forward(
+        #     (input_ids, bbox, attention_mask, token_type_ids, maps)
+        # )
+
         S, G = self.forward(
-            (input_ids, bbox, attention_mask, token_type_ids, maps)
+            ([x[0]for x in batch["text"]], normalized_word_boxes)
         )
 
         s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
@@ -181,10 +206,9 @@ class LitLayoutParsing(LightningModule):
         label_actual = label_s.squeeze(0)
         S_ = self.extend_matrix(graph[0, 3:, :])
         G_ = self.extend_matrix(graph[1, 3:, :])
-        question_heads = [i for i, ele in enumerate(
-            label_actual[0]) if ele != 0]
+        question_heads = [i for i, ele in enumerate(label_actual[0]) if ele != 0]
         answer_heads = [i for i, ele in enumerate(label_actual[1]) if ele != 0]
-        header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
+        # header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
         text = [self.tokenizer.cls_token] + [x[0]
                                              for x in batch["text"]] + [self.tokenizer.sep_token]
         ques = get_strings(question_heads, text, S_)
@@ -192,39 +216,36 @@ class LitLayoutParsing(LightningModule):
         print(f'[GROUND TRUTH]: Ques:{ques} \n Ans: {ans}')
 
         print('\n ###############################')
-        # PREDICT
-        pred_matrix_s = torch.softmax(s1, dim=1)
-        pred_matrix_s = torch.argmax(pred_matrix_s, dim=1).squeeze(0)
-        pred_matrix_g = torch.softmax(g1, dim=1)
-        pred_matrix_g = torch.argmax(pred_matrix_g, dim=1).squeeze(0)
-        pred_label = torch.argmax(s0, dim=1).squeeze(0)
-        pred_S = np.array([list(x)
-                          for x in np.array(pred_matrix_s.cpu().numpy())])
-        pred_G = np.array([list(x)
-                          for x in np.array(pred_matrix_g.cpu().numpy())])
-        # pred_G = np.array([list(x) for x in np.array(pred_matrix_g.cpu().numpy())])
-        pred_question_heads = [
-            i for i, ele in enumerate(pred_label[0]) if ele != 0]
-        pred_answer_heads = [
-            i for i, ele in enumerate(pred_label[1]) if ele != 0]
+        # # PREDICT
+        infer(S,G,text)
+        print('\n ###############################')
+        print('\n ###############################')
+        print('\n ###############################')
+        print('\n ###############################')
+        print('\n ###############################')
+        t_st = json.load(open('./data/processed/testing/1.jsonl'))
 
-        pred_ques = get_strings(pred_question_heads, text, pred_S)
-        # print(np.shape(ques))
 
-        pred_ans = get_strings(pred_answer_heads, text, pred_S)
-        print(f'[PREDICT]: Ques:{pred_ques} \n Ans: {pred_ans}')
+        def get_bbox(jsonl_file):
+            w = jsonl_file['img_sz']['width']
+            h = jsonl_file['img_sz']['height']
+            bboxes = [[ int(x[0][0]*1000/w),int(x[0][1]*1000/h) ,int(x[2][0]*1000/w),int(x[2][1]*1000/h)] for x in jsonl_file['coord']]
+            return  torch.tensor(bboxes)
 
-        for ques_idx in pred_question_heads:
-            G_pred = nx.Graph(pred_G)  # group
-            dfs = list(nx.dfs_edges(G_pred, source=int(ques_idx)))
-            # print(dfs)
-            if len(dfs) != 0:
-                q, a = dfs[0]
-                qu_s = [qs[1] for qs in pred_ques if q in qs]
-                an_s = [as_[1] for as_ in pred_ans if a in as_]
-                # if len(qu_s)== len(an_s):
-                #     print(qu_s[0], an_s[0])
-                print('============================================================')
-                print(f'[PREDICT MAPPING]: ques: {qu_s} \n ans: {an_s}')
+        normed_bbox = get_bbox(t_st).cuda()
+        words = t_st['text']
+        
+        S,G  = self.forward((words,normed_bbox))
+        text = [self.tokenizer.cls_token] + words + [self.tokenizer.sep_token]
+        infer(S,G,text)
 
+        return 0
+
+    def validation_epoch_end(self,validation_step_outputs) -> None:
+        if (self.current_epoch > 0 and self.current_epoch % 150 == 0):
+            now = datetime.now()
+            now = now.strftime("%d-%m-%Y_%H-%M-%S")
+            print('Export .pt')
+            with open(f"./resources/checkpoints/DP_model_{now}.pt", "wb") as f:
+                torch.save(self.state_dict(), f)
         return 0
