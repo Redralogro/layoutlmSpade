@@ -13,7 +13,6 @@ from dataModel.dataLoader import DpDataMoDule
 from model import spadeLayoutLM
 from modeling.warped_model import LitLayoutParsing
 from os import environ as env
-from inference import infer
 
 from dotenv import load_dotenv
 load_dotenv()

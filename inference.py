@@ -13,7 +13,7 @@ modelParsing.eval()
 modelParsing.cuda()
 
 
-t_st = json.load(open('./data/processed/testing/20.jsonl'))
+t_st = json.load(open('./data/raw/cccd_raw/cccd_raw_0.jsonl'))
 
 
 def get_bbox(jsonl_file):
