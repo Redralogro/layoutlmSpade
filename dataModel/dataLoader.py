@@ -1,9 +1,8 @@
 from typing import Callable, Dict
 
+from dataModel.datamd_ import DpDataSet
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset
-
-from dataModel.datamd_ import DpDataSet
 
 
 class DpDataMoDule(LightningDataModule):

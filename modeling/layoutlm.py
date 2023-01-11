@@ -1,6 +1,6 @@
-import torch.nn as nn
 import torch
-from transformers import AutoConfig,BertModel, BertConfig
+import torch.nn as nn
+from transformers import AutoConfig, BertConfig, BertModel
 
 # from transformers import BertConfig, 
 # config = AutoConfig.from_pretrained("microsoft/layoutlm-base-uncased")
@@ -179,3 +179,4 @@ class LayoutlmModel(BertModel):
             1:
         ]  # add hidden_states and attentions if they are here
         return outputs  # sequence_output, pooled_output, (hidden_states), (attentions)
+    

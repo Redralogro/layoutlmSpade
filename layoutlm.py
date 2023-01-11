@@ -1,7 +1,9 @@
-import torch
 import numpy as np
+import torch
 from torch import nn
-from transformers import AutoModel, AutoTokenizer, AutoConfig, BatchEncoding, BertModel,LayoutLMModel
+from transformers import (AutoConfig, AutoModel, AutoTokenizer, BatchEncoding,
+                          BertModel, LayoutLMModel)
+
 
 class layoutlmBase(nn.Module):
     def __init__(self):

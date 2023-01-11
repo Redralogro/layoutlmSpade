@@ -1,18 +1,4 @@
 model:
-  name: model_layoutlm.LayoutLMSpade
-  config:
-    layoutlm: microsoft/layoutlm-base-cased
-    layoutlm_extra_config: {}
-    layoutlm_extra_config:
-      local_files_only: true
-    bert: vinai/phobert-base
-    bert_extra_config:
-      local_files_only: true
-    num_fields: 3
-    fields:
-      - questions
-      - answers
-      - headers
-  checkpoint: checkpoint-dp/best-score.pt
-
-data_path: data/processed
+  layoutlm: microsoft/layoutlm-base-cased
+  finetune: False
+  checkpoint: ./resources/checkpoints/DP_model_finetune_11-01-2023_04-43-28.pt

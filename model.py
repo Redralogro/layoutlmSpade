@@ -1,13 +1,14 @@
-from pytorch_lightning import LightningModule
+import numpy as np
+import torch
+import torch.nn as nn
+from graph_stuff import get_qa, get_strings
 from layoutlm import layoutlmBase
 from PIL import Image
-import torch.nn as nn
-from transformers import AutoModel, AutoTokenizer, AutoConfig, LayoutLMModel
-from torch import Tensor, optim
-import torch
+from pytorch_lightning import LightningModule
 from spade_model import RelationTagger
-import numpy as np
-from graph_stuff import get_strings, get_qa
+from torch import Tensor, optim
+from transformers import AutoConfig, AutoModel, AutoTokenizer, LayoutLMModel
+
 
 class spadeLayoutLM(LightningModule):
     def __init__(self):

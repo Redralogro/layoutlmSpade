@@ -1,8 +1,10 @@
+import json
+
 import torch
 from helpers import infer
-import json
-from transformers import AutoTokenizer, AutoConfig, LayoutLMModel
 from modeling.warped_model import LitLayoutParsing
+from transformers import AutoConfig, AutoTokenizer, LayoutLMModel
+
 tokenizer = AutoTokenizer.from_pretrained("microsoft/layoutlm-base-uncased")
 model = LayoutLMModel.from_pretrained("microsoft/layoutlm-base-uncased")
 config = AutoConfig.from_pretrained("microsoft/layoutlm-base-uncased")
@@ -13,7 +15,7 @@ modelParsing.eval()
 modelParsing.cuda()
 
 
-t_st = json.load(open('./data/raw/cccd_raw/cccd_raw_0.jsonl'))
+t_st = json.load(open('./data/processed/train/truong.jsonl'))
 
 
 def get_bbox(jsonl_file):
