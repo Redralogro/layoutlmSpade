@@ -1,16 +1,17 @@
-from graph_stuff import *
-from traceback import print_exc
-import numpy as np
-import torch.nn as nn
-from typing import Dict
 import json
-import yaml
+from functools import lru_cache
+from traceback import print_exc
+from typing import Dict
 
-import torch
+import networkx as nx
 # from modeling.warped_model import LitLayoutParsing
 import numpy as np
+import torch
+import torch.nn as nn
+import yaml
+from graph_stuff import *
 from graph_stuff import get_strings
-import networkx as nx
+
 
 class RelationTagger(nn.Module):
     def __init__(self, n_fields, hidden_size, head_p_dropout=0.1):
@@ -113,7 +114,6 @@ def load_config(path: str) -> Dict:
         raise "Invalid file format"
     return config
 
-
 def infer(S,G,text):
     s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
     g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
@@ -134,7 +134,7 @@ def infer(S,G,text):
 
     pred_ans = get_strings(pred_answer_heads, text, pred_S)
     print(f'[PREDICT]: Ques:{pred_ques} \n Ans: {pred_ans}')
-
+    print(f'[PREDICT MAPPING]')
     for ques_idx in pred_question_heads:
             G_pred = nx.Graph(pred_G)  # group
             dfs = list(nx.dfs_edges(G_pred, source=int(ques_idx)))
@@ -145,5 +145,8 @@ def infer(S,G,text):
                 an_s = [as_[1] for as_ in pred_ans if a in as_]
                 # if len(qu_s)== len(an_s):
                 #     print(qu_s[0], an_s[0])
-                print('============================================================')
-                print(f'[PREDICT MAPPING]: ques: {qu_s} \n ans: {an_s}')
+                try:
+                    print('============================================================')
+                    print(f'{qu_s[0]}|{an_s[0]}')
+                except Exception:
+                    pass

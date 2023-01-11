@@ -1,21 +1,24 @@
-from spade_model import RelationTagger
-from transformers import AutoModel, AutoTokenizer, AutoConfig, BatchEncoding, BertModel, LayoutLMModel
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
-import torch.optim as optim
+from datetime import datetime
+
+import mlflow
+import networkx as nx
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from dataModel.datamd_ import DpDataSet
-from graph_stuff import get_strings, get_qa
-import networkx as nx
-from datetime import datetime
-from modeling.layoutlm import LayoutlmEmbeddings
+from graph_stuff import get_qa, get_strings
 from helpers import b_loss
 from jsonmerge import merge
-import mlflow
-from mlflow import log_metric, log_param, log_artifacts
 from loss import BboxLoss
+from mlflow import log_artifacts, log_metric, log_param
+from modeling.layoutlm import LayoutlmEmbeddings
+from spade_model import RelationTagger
+from torch.utils.data import DataLoader, Dataset
+from tqdm import tqdm
+from transformers import (AutoConfig, AutoModel, AutoTokenizer, BatchEncoding,
+                          BertModel, LayoutLMModel)
+
 mlflow.set_tracking_uri("http://10.10.1.37:5000")
 mlflow.set_experiment("eKyC/DP")
 
