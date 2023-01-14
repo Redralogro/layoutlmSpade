@@ -22,42 +22,43 @@ class DpDataSet(Dataset):
         return len(self.items)
 
     def get_data(self):
-        root_data = json.load(open(self.path))
-        shuffle_data = [shufflev2(item) for item in root_data]
+        from copy import deepcopy
+        root_data_ = json.load(open(self.path))
+        shuffle_data = [shufflev2(item) for item in deepcopy(root_data_)]
 
         data1 = [{'text': item['text'], 'label':item['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':item['coord']} for item in root_data]
+                  'coord':item['coord']} for item in deepcopy(root_data_)]
 
         data2 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':inverse(item)['coord']} for item in root_data]
+                  'coord':inverse(item)['coord']} for item in deepcopy(root_data_)]
 
         data3 = [{'text': item['text'], 'label':item['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord': self.move_box(item)['coord']} for item in root_data]
+                  'coord': self.move_box(item)['coord']} for item in deepcopy(root_data_)]
 
         data4 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':self.move_box(inverse(item))['coord']} for item in root_data]
+                  'coord':self.move_box(inverse(item))['coord']} for item in deepcopy(root_data_)]
 
         data5 = [{'text': item['text'], 'label':item['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':item['coord']} for item in shuffle_data]
+                  'coord':item['coord']} for item in deepcopy(shuffle_data)]
 
         data6 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':inverse(item)['coord']} for item in shuffle_data]
+                  'coord':inverse(item)['coord']} for item in deepcopy(shuffle_data)]
 
         data7 = [{'text': item['text'], 'label':item['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord': self.move_box(item)['coord']} for item in shuffle_data]
+                  'coord': self.move_box(item)['coord']} for item in deepcopy(shuffle_data)]
 
         data8 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
                  'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':self.move_box(inverse(item))['coord']} for item in shuffle_data]
+                  'coord':self.move_box(inverse(item))['coord']} for item in deepcopy(shuffle_data)]
 
-        data = data1 + data3 + data2 + data4 + data5 + data7 + data6 + data8
+        data = data1 + data2 + data3 + data4 + data5 + data6 + data7 + data8
 
         return data
 

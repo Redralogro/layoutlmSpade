@@ -143,36 +143,39 @@ class LitBaseParsing(LightningModule):
 
     @torch.no_grad()
     def validation_step(self, batch, batch_idx) -> None:
-        bbox = batch["bbox"].squeeze(0)
-        maps = batch['maps']
-        input_ids = batch['input_ids'].squeeze(0)
-        attention_mask = batch['attention_mask'].squeeze(0)
-        token_type_ids = batch['token_type_ids'].squeeze(0)
-        # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
-        S, G = self.forward(
-            (input_ids, attention_mask, token_type_ids, bbox, maps)
-        )
+        if (self.current_epoch % 2 == 0):
 
-        graph = torch.tensor(batch['label']).cuda()
+            bbox = batch["bbox"].squeeze(0)
+            maps = batch['maps']
+            input_ids = batch['input_ids'].squeeze(0)
+            attention_mask = batch['attention_mask'].squeeze(0)
+            token_type_ids = batch['token_type_ids'].squeeze(0)
+            # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
+            S, G = self.forward(
+                (input_ids, attention_mask, token_type_ids, bbox, maps)
+            )
 
-        # GROUND TRUTH
-        label_s = torch.tensor(self.extend_label(
-            graph[0, :3, :])).unsqueeze(0).cuda()
-        label_actual = label_s.squeeze(0)
-        S_ = self.extend_matrix(graph[0, 3:, :])
-        question_heads = [i for i, ele in enumerate(
-            label_actual[0]) if ele != 0]
-        answer_heads = [i for i, ele in enumerate(label_actual[1]) if ele != 0]
-        # header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
-        text = [tokenizer.cls_token] + [x[0]
-                                        for x in batch["text"]] + [tokenizer.sep_token]
-        ques = get_strings(question_heads, text, S_)
-        ans = get_strings(answer_heads, text, S_)
-        print(f'[GROUND TRUTH]: Ques:{ques} \n Ans: {ans}')
+            graph = torch.tensor(batch['label']).cuda()
 
-        print('\n ###############################')
-        # # PREDICT
-        infer(S, G, text)
+            # GROUND TRUTH
+            label_s = torch.tensor(self.extend_label(
+                graph[0, :3, :])).unsqueeze(0).cuda()
+            label_actual = label_s.squeeze(0)
+            S_ = self.extend_matrix(graph[0, 3:, :])
+            question_heads = [i for i, ele in enumerate(
+                label_actual[0]) if ele != 0]
+            answer_heads = [i for i, ele in enumerate(
+                label_actual[1]) if ele != 0]
+            # header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
+            text = [tokenizer.cls_token] + [x[0]
+                                            for x in batch["text"]] + [tokenizer.sep_token]
+            ques = get_strings(question_heads, text, S_)
+            ans = get_strings(answer_heads, text, S_)
+            print(f'[GROUND TRUTH]: Ques:{ques} \n Ans: {ans}')
+
+            print('\n ###############################')
+            # # PREDICT
+            infer(S, G, text)
 
         return 0
 
