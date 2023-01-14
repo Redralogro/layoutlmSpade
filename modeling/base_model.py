@@ -1,23 +1,17 @@
-import json
 from datetime import datetime
 from functools import lru_cache
-from typing import Callable, Dict
 
-import networkx as nx
 import numpy as np
 import torch
 import torch.nn as nn
-from graph_stuff import get_qa, get_strings
-from helpers import infer
+from helpers import infer, get_strings
 from loss import BboxLoss
 from modeling.warped_model import LitLayoutParsing
-from PIL import Image
 from pytorch_lightning import LightningModule
-from spade_model import RelationTagger
-from torch import Tensor, optim
+from torch import optim
 from torch.optim import lr_scheduler
 from tqdm import tqdm
-from transformers import AutoConfig, AutoModel, AutoTokenizer, LayoutLMModel
+from transformers import AutoTokenizer
 
 print = tqdm.write
 

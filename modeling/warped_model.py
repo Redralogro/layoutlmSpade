@@ -1,18 +1,10 @@
-import json
-from datetime import datetime
 
-import networkx as nx
-import numpy as np
 import torch
 import torch.nn as nn
-from graph_stuff import get_qa, get_strings
-from helpers import infer
 from loss import BboxLoss
-from PIL import Image
 from pytorch_lightning import LightningModule
-from spade_model import RelationTagger
-from torch import Tensor, optim
-from transformers import AutoConfig, AutoModel, AutoTokenizer, LayoutLMModel
+from modeling.spade_model import RelationTagger
+from transformers import LayoutLMModel
 
 
 class MyPositionEmbedding(nn.Module):

@@ -9,9 +9,28 @@ import numpy as np
 import torch
 import torch.nn as nn
 import yaml
-from graph_stuff import *
-from graph_stuff import get_strings
 
+
+
+def get_strings(heads, data: list, graph): 
+    temp = []
+    # G = nx.Graph(graph_s[0,3:,:]) # s
+    G = nx.Graph(graph) # s
+    try:
+        for index in heads:
+            dfs = list(nx.dfs_edges(G, source=int(index)))
+            dfs
+            if  dfs == []:
+                header = [int(index)]
+            else: header =  [dfs[0][0]] + [x[1]  for i,x in enumerate (dfs)]
+            str_ = ''
+            for i in header:
+                str_ += ' ' + data[int(i)] 
+                assert i <= len(data)
+            temp.append([index, str_[1:]])
+    except Exception:
+        pass
+    return temp
 
 class RelationTagger(nn.Module):
     def __init__(self, n_fields, hidden_size, head_p_dropout=0.1):

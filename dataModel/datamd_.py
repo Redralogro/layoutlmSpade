@@ -5,8 +5,8 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from transformers import AutoTokenizer
-from data_inverse import inverse
-from data_shuffle import shufflev2
+from dataModel.data_inverse import inverse
+from dataModel.data_shuffle import shufflev2
 trans = transforms.Compose([transforms.ToTensor()])
 
 
