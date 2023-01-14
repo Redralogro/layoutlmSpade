@@ -5,7 +5,8 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from transformers import AutoTokenizer
-
+from data_inverse import inverse
+from data_shuffle import shufflev2
 trans = transforms.Compose([transforms.ToTensor()])
 
 
@@ -21,6 +22,7 @@ class DpDataSet(Dataset):
         return len(self.items)
 
     def get_data(self):
+<<<<<<< HEAD
         return [{'text': item['text'],
                  'label':item['label'],
                  'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
@@ -28,6 +30,56 @@ class DpDataSet(Dataset):
 
     def __getitem__(self, idx):
         items = self.move_box(self.items[idx])
+=======
+        root_data = json.load(open(self.path))
+        shuffle_data = [shufflev2(item) for item in root_data] 
+        
+        data1= [{'text': item['text'],'label':item['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord':item['coord']} for item in root_data]
+        
+        
+        data2 = [{'text': inverse(item)['text'],'label':inverse(item)['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord':inverse(item)['coord']} for item in root_data]
+        
+        data3= [{'text': item['text'],'label':item['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord': self.move_box(item)['coord']} for item in root_data]
+        
+        
+        data4 = [{'text': inverse(item)['text'],'label':inverse(item)['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord':self.move_box(inverse(item))['coord']} for item in root_data]
+        
+        
+        data5= [{'text': item['text'],'label':item['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord':item['coord']} for item in shuffle_data]
+        
+        
+        data6 = [{'text': inverse(item)['text'],'label':inverse(item)['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord':inverse(item)['coord']} for item in shuffle_data]
+        
+        data7= [{'text': item['text'],'label':item['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord': self.move_box(item)['coord']} for item in shuffle_data]
+        
+        
+        data8 = [{'text': inverse(item)['text'],'label':inverse(item)['label'],
+                 'size':[int(item['img_sz']['width']),int(item['img_sz']['height'])],
+                 'coord':self.move_box(inverse(item))['coord']} for item in shuffle_data]
+        
+        
+        
+        data = data1 + data3 + data2 + data4 + data5 + data7 + data6 + data8
+        
+        return data
+
+    def __getitem__(self, idx):
+        items = self.items[idx]
+>>>>>>> 8b4e72c7a399b7ea065bd2de4716b176a6508471
         input_ids, attention_mask, token_type_ids, bbox, maps = self.handle_input(
             items['text'], items['coord'], items['size'])
         
@@ -77,8 +129,13 @@ class DpDataSet(Dataset):
         from copy import deepcopy
         data=deepcopy(in_data)
         box_id=random.choices([x for x in range(len(data['coord']))],k=int(len(data['coord'])*box_rate))
+<<<<<<< HEAD
         w_img=data['size'][0]
         h_img=data['size'][1]
+=======
+        w_img=data['img_sz']['width']
+        h_img=data['img_sz']['height']
+>>>>>>> 8b4e72c7a399b7ea065bd2de4716b176a6508471
 
         move_type=random.choice(['w','h','wh'])
         for id in box_id:
