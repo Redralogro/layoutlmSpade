@@ -23,6 +23,7 @@ print = tqdm.write
 
 tokenizer = AutoTokenizer.from_pretrained("microsoft/layoutlm-base-uncased")
 
+
 class LitBaseParsing(LightningModule):
     def __init__(self):
         super(LitBaseParsing, self).__init__()
@@ -48,12 +49,13 @@ class LitBaseParsing(LightningModule):
 
     def forward(self, x: tuple) -> None:
         input_ids, attention_mask, token_type_ids, bbox, maps = x
-        S, G = self.model((input_ids, attention_mask, token_type_ids, bbox, maps))
+        S, G = self.model((input_ids, attention_mask,
+                          token_type_ids, bbox, maps))
         return S, G
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
-        lf = lambda x: (1 - x / 301) * (1.0 - 0.1) + 0.1  # linear
+        def lf(x): return (1 - x / 301) * (1.0 - 0.1) + 0.1  # linear
 
         return {'optimizer': optimizer,
                 "lr_scheduler": {
@@ -61,13 +63,13 @@ class LitBaseParsing(LightningModule):
                     "interval": "epoch",
                     "frequency": 1,
                     "monitor": "metric_to_track"
-                    }
+                }
                 }
 
     def training_step(self, batch, batch_idx) -> None:
         bbox = batch["bbox"].squeeze(0)
         maps = batch['maps']
-        input_ids =  batch['input_ids'].squeeze(0)
+        input_ids = batch['input_ids'].squeeze(0)
         attention_mask = batch['attention_mask'].squeeze(0)
         token_type_ids = batch['token_type_ids'].squeeze(0)
         # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
@@ -131,20 +133,19 @@ class LitBaseParsing(LightningModule):
 
         return loss
 
-
-    def  on_train_epoch_start(self) -> None:
+    def on_train_epoch_start(self) -> None:
         print('#########[TRAINING]###################\n')
         return super().on_train_epoch_start()
-    
+
     def on_validation_epoch_start(self) -> None:
         print('#########[VALIDATING]###################\n')
         return super().on_validation_epoch_start()
-    
+
     @torch.no_grad()
     def validation_step(self, batch, batch_idx) -> None:
         bbox = batch["bbox"].squeeze(0)
         maps = batch['maps']
-        input_ids =  batch['input_ids'].squeeze(0)
+        input_ids = batch['input_ids'].squeeze(0)
         attention_mask = batch['attention_mask'].squeeze(0)
         token_type_ids = batch['token_type_ids'].squeeze(0)
         # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
@@ -164,7 +165,7 @@ class LitBaseParsing(LightningModule):
         answer_heads = [i for i, ele in enumerate(label_actual[1]) if ele != 0]
         # header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
         text = [tokenizer.cls_token] + [x[0]
-                                             for x in batch["text"]] + [tokenizer.sep_token]
+                                        for x in batch["text"]] + [tokenizer.sep_token]
         ques = get_strings(question_heads, text, S_)
         ans = get_strings(answer_heads, text, S_)
         print(f'[GROUND TRUTH]: Ques:{ques} \n Ans: {ans}')
@@ -176,7 +177,7 @@ class LitBaseParsing(LightningModule):
         return 0
 
     def validation_epoch_end(self, validation_step_outputs) -> None:
-        if (self.current_epoch > 0 and self.current_epoch % 150 == 0):
+        if (self.current_epoch > 0 and self.current_epoch % 100 == 0):
             now = datetime.now()
             now = now.strftime("%d-%m-%Y_%H-%M-%S")
             print('Export .pt')
