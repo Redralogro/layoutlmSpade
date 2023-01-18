@@ -62,8 +62,19 @@ class DpDataSet(Dataset):
 
         return data
 
+    def add_noise(self,data):
+        text_id = random.choices([x for x in range(len(data['text']))], k=int(len(data['text'])*0.1))
+        for idx in text_id:
+            mask_sympbol = random.choices(
+                    [x for x in [' ', ',']])
+            t = data['text'][idx] + mask_sympbol[0]
+            data['text'][idx] = t 
+            # print(t)
+        return data
+
+    
     def __getitem__(self, idx):
-        items = self.items[idx]
+        items = self.add_noise(self.items[idx]) 
         input_ids, attention_mask, token_type_ids, bbox, maps = self.handle_input(
             items['text'], items['coord'], items['size'])
 

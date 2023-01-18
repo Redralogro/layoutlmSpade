@@ -49,7 +49,7 @@ class LitBaseParsing(LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
-        def lf(x): return (1 - x / 301) * (1.0 - 0.1) + 0.1  # linear
+        def lf(x): return (1 - x / 81) * (1.0 - 0.1) + 0.1  # linear
 
         return {'optimizer': optimizer,
                 "lr_scheduler": {
@@ -174,7 +174,7 @@ class LitBaseParsing(LightningModule):
         return 0
 
     def validation_epoch_end(self, validation_step_outputs) -> None:
-        if (self.current_epoch > 0 and self.current_epoch % 100 == 0):
+        if (self.current_epoch > 0 and self.current_epoch % 40 == 0):
             now = datetime.now()
             now = now.strftime("%d-%m-%Y_%H-%M-%S")
             print('Export .pt')
