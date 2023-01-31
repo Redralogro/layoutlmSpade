@@ -2,3 +2,7 @@ model:
   layoutlm: microsoft/layoutlm-base-cased
   finetune: False
   checkpoint: ./resources/checkpoints/DP_model_finetune_11-01-2023_04-43-28.pt
+
+data_train_path: ./data/processed/cccd_train.jsonl
+epochs: 81
+numhead: 3

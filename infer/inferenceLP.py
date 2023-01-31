@@ -4,6 +4,7 @@ import torch
 from model.base_model import LitBaseParsing
 from transformers import AutoTokenizer
 import numpy as np
+from functools import lru_cache
 tokenizer = AutoTokenizer.from_pretrained("microsoft/layoutlm-base-uncased")
 
 def get_strings(heads, data: list, graph): 
@@ -32,12 +33,20 @@ def get_bbox(jsonl_file):
     bboxes = [[ int(x[0][0]*1000/w),int(x[0][1]*1000/h) ,int(x[2][0]*1000/w),int(x[2][1]*1000/h)] for x in jsonl_file['coord']]
     return  torch.tensor(bboxes)
 
-def LayoutParsing(jsonfile, path):
+@lru_cache
+def LoadModel(path):
     PATH = path
     modelParsing = LitBaseParsing()
     modelParsing.load_state_dict(torch.load(PATH))
     modelParsing.eval()
     modelParsing.cuda()
+    
+    return modelParsing
+
+def LayoutParsing(jsonfile, path):
+    
+    modelParsing = LoadModel(path)
+    
     words = jsonfile['text']
     normalized_word_boxes = get_bbox(jsonfile)
     encoding = tokenizer(" ".join(words), return_tensors='pt')
@@ -101,7 +110,7 @@ def LayoutParsing(jsonfile, path):
 
             if len(dfs) ==0:
                 result[str(ans_dix)] = get_strings([ans_dix ], words, S_)[0][1]
-                print(get_strings([ans_dix ], words, S_)[0][1])
+                # print(get_strings([ans_dix ], words, S_)[0][1])
             if len(dfs) != 0:
                 a, q = dfs[0]
                 qu_s = [qs[1] for qs in ques if q in qs]
@@ -110,14 +119,15 @@ def LayoutParsing(jsonfile, path):
                 #     print(qu_s[0], an_s[0])
                 
                 try:
-                    print(f'{qu_s[0]}|{an_s[0]}')
+                    # print(f'{qu_s[0]}|{an_s[0]}')
                     result [str(qu_s[0])] = an_s[0]
                 except Exception:
                     if len(qu_s) ==0 and len(an_s) !=0:
-                        print(f'-|{an_s[0]}') 
+                        # print(f'-|{an_s[0]}') 
                         result [str(ans_dix)] = an_s[0]
                     if len(qu_s) !=0 and len(an_s) ==0:
-                        print(f'{qu_s[0]}|-')
+                        # print(f'{qu_s[0]}|-')
+                        continue
     
     return result
 
