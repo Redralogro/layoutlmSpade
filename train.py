@@ -22,9 +22,8 @@ lr_monitor = LearningRateMonitor(logging_interval='step')
 trainer = Trainer(accelerator='gpu',
                   devices=1,
                   logger=logger,
-                  #   resume_from_checkpoint='./resources/checkpoints/DP_model_finetune_05-01-2023_14-07-10.pt',
                   max_epochs=81,
-                  auto_lr_find=True,
+                  auto_lr_find=False,
                   auto_scale_batch_size='binsearch',
                   callbacks=[lr_monitor],
                   log_every_n_steps=5
