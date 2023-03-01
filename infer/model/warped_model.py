@@ -1,10 +1,11 @@
 
 import torch
 import torch.nn as nn
-from model.loss import BboxLoss
 from pytorch_lightning import LightningModule
-from model.spade_model import RelationTagger
 from transformers import LayoutLMModel
+
+from infer.model.loss import BboxLoss
+from infer.model.spade_model import RelationTagger
 
 
 class MyPositionEmbedding(nn.Module):

@@ -22,9 +22,9 @@ class LitBaseParsing(LightningModule):
     def __init__(self):
         super(LitBaseParsing, self).__init__()
         self.model = LitLayoutParsing()
-        self.lr = 3e-5
         self.loss_clss = nn.CrossEntropyLoss()
         self.bbox_loss_fn = BboxLoss()
+        
 
     @lru_cache
     def extend_matrix(self, matrix):
@@ -48,7 +48,7 @@ class LitBaseParsing(LightningModule):
         return S, G
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = optim.Adam(self.parameters(), lr=3e-5)
         def lf(x): return (1 - x / 81) * (1.0 - 0.1) + 0.1  # linear
 
         return {'optimizer': optimizer,
@@ -74,6 +74,9 @@ class LitBaseParsing(LightningModule):
         s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
         g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
         graph = torch.tensor(batch['label']).cuda()
+        
+        S_ = self.extend_matrix(graph[0, 3:, :])
+        G_ = self.extend_matrix(graph[1, 3:, :])
         # GROUND TRUTH
         label_s = torch.tensor(self.extend_label(
             graph[0, :3, :])).unsqueeze(0).cuda()
@@ -84,8 +87,7 @@ class LitBaseParsing(LightningModule):
         matrix_g = torch.tensor(self.extend_matrix(
             graph[1, 3:, :])).unsqueeze(0).cuda()
         label_actual = label_s.squeeze(0)
-        S_ = self.extend_matrix(graph[0, 3:, :])
-        G_ = self.extend_matrix(graph[1, 3:, :])
+        
         question_heads = [i for i, ele in enumerate(
             label_actual[0]) if ele != 0]
         answer_heads = [i for i, ele in enumerate(label_actual[1]) if ele != 0]
@@ -135,6 +137,8 @@ class LitBaseParsing(LightningModule):
         print('#########[VALIDATING]###################\n')
         return super().on_validation_epoch_start()
 
+    # def loss_LP(self,graph):
+        
     @torch.no_grad()
     def validation_step(self, batch, batch_idx) -> None:
         if (self.current_epoch % 2 == 0):
@@ -149,24 +153,63 @@ class LitBaseParsing(LightningModule):
                 (input_ids, attention_mask, token_type_ids, bbox, maps)
             )
 
+            s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
+            g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
             graph = torch.tensor(batch['label']).cuda()
 
             # GROUND TRUTH
             label_s = torch.tensor(self.extend_label(
                 graph[0, :3, :])).unsqueeze(0).cuda()
+            label_g = torch.tensor(self.extend_label(
+                graph[1, :3, :])).unsqueeze(0).cuda()
+            matrix_s = torch.tensor(self.extend_matrix(
+                graph[0, 3:, :])).unsqueeze(0).cuda()
+            matrix_g = torch.tensor(self.extend_matrix(
+                graph[1, 3:, :])).unsqueeze(0).cuda()
+        
             label_actual = label_s.squeeze(0)
             S_ = self.extend_matrix(graph[0, 3:, :])
-            question_heads = [i for i, ele in enumerate(
-                label_actual[0]) if ele != 0]
-            answer_heads = [i for i, ele in enumerate(
-                label_actual[1]) if ele != 0]
-            # header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
+            G_ = self.extend_matrix(graph[1, 3:, :])
+            question_heads = [i for i, ele in enumerate(label_actual[0]) if ele != 0]
+            answer_heads = [i for i, ele in enumerate(label_actual[1]) if ele != 0]
+            header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]
             text = [tokenizer.cls_token] + [x[0]
                                             for x in batch["text"]] + [tokenizer.sep_token]
+            
+            # PREDICT
+            pred_matrix_s = torch.softmax(s1, dim=1)
+            pred_matrix_s = torch.argmax(pred_matrix_s, dim=1).squeeze(0)
+            pred_label = torch.argmax(s0, dim=1).squeeze(0)
+            pred_S = np.array([list(x)
+                            for x in np.array(pred_matrix_s.cpu().numpy())])
+            # pred_G = np.array([list(x) for x in np.array(pred_matrix_g.cpu().numpy())])
+            pred_question_heads = [
+                i for i, ele in enumerate(pred_label[0]) if ele != 0]
+            pred_answer_heads = [
+                i for i, ele in enumerate(pred_label[1]) if ele != 0]
+            bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes, (question_heads,
+                                                                answer_heads,
+                                                                pred_question_heads,
+                                                                pred_answer_heads))
+
+            loss_label_s = self.loss_clss(s0, label_s.long())
+            loss_label_g = self.loss_clss(g0, label_g.long())
+            loss_matrix_s = self.loss_clss(s1, matrix_s.long())
+            loss_matrix_g = self.loss_clss(g1, matrix_g.long())
+            loss = loss_label_s + loss_matrix_s + loss_label_g + loss_matrix_g + bbox_loss
+            
+            self.log('Val/loss', loss.detach())
+            self.log('Val/loss_bboxes', bbox_loss.detach())
+            self.log('Val/loss_label_s', loss_label_s.detach())
+            self.log('Val/loss_label_g', loss_label_g.detach())
+            self.log('Val/loss_matrix_s', loss_matrix_s.detach())
+            self.log('Val/loss_matrix_g', loss_matrix_g.detach())
+            
+            
             ques = get_strings(question_heads, text, S_)
             ans = get_strings(answer_heads, text, S_)
+            
             print(f'[GROUND TRUTH]: Ques:{ques} \n Ans: {ans}')
-
             print('\n ###############################')
             # # PREDICT
             infer(S, G, text)

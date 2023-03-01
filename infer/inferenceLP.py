@@ -1,7 +1,7 @@
 import json
 import networkx as nx
 import torch
-from model.base_model import LitBaseParsing
+from infer.model.base_model import LitBaseParsing
 from transformers import AutoTokenizer
 import numpy as np
 from functools import lru_cache
@@ -70,7 +70,10 @@ def LayoutParsing(jsonfile, path):
     bbox = torch.tensor([token_boxes]).cuda()
     
     with torch.no_grad():
+        
+        # print(input_ids.shape, attention_mask.shape, token_type_ids.shape, bbox.shape,np.shape(maps))
         S,G  = modelParsing((input_ids, attention_mask, token_type_ids, bbox, maps))
+        print(np.shape(S), np.shape(G))
         s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
         g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
         pred_matrix_s = torch.softmax(s1, dim=1)

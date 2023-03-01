@@ -1,12 +1,15 @@
 import json
 import os
 import random
+
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from transformers import AutoTokenizer
+
 from dataModel.data_inverse import inverse
 from dataModel.data_shuffle import shufflev2
+
 trans = transforms.Compose([transforms.ToTensor()])
 
 
@@ -23,7 +26,10 @@ class DpDataSet(Dataset):
 
     def get_data(self):
         from copy import deepcopy
-        root_data_ = json.load(open(self.path))
+        # with open(self.path,'r', encoding ='utf8') as f:
+        with open(self.path, 'r', encoding='utf8') as f:
+            root_data_ = [json.loads(s) for s in f.readlines()]
+        # root_data_ = json.load(open(self.path))
         shuffle_data = [shufflev2(item) for item in deepcopy(root_data_)]
 
         data1 = [{'text': item['text'], 'label':item['label'],
@@ -65,14 +71,14 @@ class DpDataSet(Dataset):
     def add_noise(self,data,mask_sympbol):
         text_id = random.choices([x for x in range(len(data['text']))], k=int(len(data['text'])*0.1))
         for idx in text_id:
-            t = data['text'][idx] + mask_sympbol[0]
+            t = data['text'][idx] + ' '
             data['text'][idx] = t 
             # print(t)
         return data
 
     
     def __getitem__(self, idx):
-        mask_sympbol = random.choices([x for x in [' ', ',']])
+        mask_sympbol = random.choices([x for x in [" ",","]])
         items = self.add_noise(self.items[idx], mask_sympbol) 
         input_ids, attention_mask, token_type_ids, bbox, maps = self.handle_input(
             items['text'], items['coord'], items['size'])

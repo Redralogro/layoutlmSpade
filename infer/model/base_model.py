@@ -4,13 +4,14 @@ from functools import lru_cache
 import numpy as np
 import torch
 import torch.nn as nn
-from model.loss import BboxLoss
-from model.warped_model import LitLayoutParsing
 from pytorch_lightning import LightningModule
 from torch import optim
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 from transformers import AutoTokenizer
+
+from infer.model.loss import BboxLoss
+from infer.model.warped_model import LitLayoutParsing
 
 print = tqdm.write
 
