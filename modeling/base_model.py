@@ -148,6 +148,7 @@ class LitBaseParsing(LightningModule):
             input_ids = batch['input_ids'].squeeze(0)
             attention_mask = batch['attention_mask'].squeeze(0)
             token_type_ids = batch['token_type_ids'].squeeze(0)
+            ex_bboxes = bbox.squeeze(0)/1000
             # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
             S, G = self.forward(
                 (input_ids, attention_mask, token_type_ids, bbox, maps)

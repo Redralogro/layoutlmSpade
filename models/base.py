@@ -11,6 +11,7 @@ def load_layoutModel():
     return LayoutLMModel.from_pretrained(
             "microsoft/layoutlm-base-uncased", local_files_only=True)
 
+<<<<<<< HEAD
 @lru_cache
 def extend_matrix(matrix:Tensor):
     matrix = matrix.cpu().numpy()
@@ -26,6 +27,8 @@ def extend_label(label_: Tensor):
     label = [[0] + list(x) + [0] for x in list(label_)]
     return np.array(label, dtype='int')
 
+=======
+>>>>>>> 9f1dd023b8eacd9eb6316eed4264a880142005c9
 
 class RelationTagger(nn.Module):
     def __init__(self, n_fields, hidden_size, head_p_dropout=0.1):
@@ -166,6 +169,7 @@ class LitLayoutParsing(LightningModule):
         i = 0
         device = last_hidden_state.device
         reduce = []
+<<<<<<< HEAD
         for j  in range(len(maps)):
             g_token = maps[j]
             ten = self.zeros_temp.to(device)
@@ -173,10 +177,19 @@ class LitLayoutParsing(LightningModule):
                 ten += last_hidden_state[0][i]
                 i += 1
             ten = ten/g_token.shape[0]
+=======
+        for g_token in maps:
+            ten = self.zeros_temp.to(device)
+            for ele in g_token:
+                ten += last_hidden_state[0][i]
+                i += 1
+            ten = ten/len(g_token)
+>>>>>>> 9f1dd023b8eacd9eb6316eed4264a880142005c9
             reduce.append(ten)
         reduce = torch.stack(reduce).to(device)
         return reduce
 
+<<<<<<< HEAD
     def tranfer_maps(self,maps: Tensor):
         m = []
         maps = torch.squeeze(maps, 0)
@@ -184,12 +197,28 @@ class LitLayoutParsing(LightningModule):
         for i in range(count.shape[0]):
             m.append(torch.stack([uniq[i]]*count[i]))
         return m
+=======
+    def tranfer_maps(self, maps: Tensor):
+        maps = torch.squeeze(maps, 0)
+        # maps = maps.detach()
+        # m = [ item.item() -0 for item in maps]
+        # box_index =  np.unique(m).tolist()
+        m = np.array(maps.cpu())
+        m = m.tolist()
+        box_index =  np.unique(m).tolist()
+        return [[item]*m.count(item) for item in box_index]
+>>>>>>> 9f1dd023b8eacd9eb6316eed4264a880142005c9
 
     def change_type(self,ten: Tensor):
         return ten.long()
 
+<<<<<<< HEAD
     def forward(self,maps:Tensor, input_ids: Tensor, attention_mask: Tensor,
         token_type_ids:Tensor, bbox:Tensor) -> Tensor:
+=======
+    def forward(self, input_ids: Tensor, attention_mask: Tensor,
+        token_type_ids:Tensor, bbox:Tensor, maps:Tensor) -> Tensor:
+>>>>>>> 9f1dd023b8eacd9eb6316eed4264a880142005c9
         device = self.device
         # input_ids, attention_mask, token_type_ids, bbox, maps = x
         input_ids = self.change_type(input_ids)
