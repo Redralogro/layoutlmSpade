@@ -3,8 +3,12 @@ model:
   finetune: False
   checkpoint: ./resources/checkpoints/DP_model_finetune_11-01-2023_04-43-28.pt
 
+<<<<<<< HEAD
+data_train_path: ./data/processed/cccd_train.jsonl
+=======
 data_train_path: ./data/processed/data_train_28_2_2023.jsonl
 data_test_path: ./data/processed/data_test_28_2_2023.jsonl
+>>>>>>> c6b3dafbfb9a2a7e1630041f9acfbc8448ee31d7
 epochs: 81
 numhead: 3
 
