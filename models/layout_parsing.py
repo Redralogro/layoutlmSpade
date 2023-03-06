@@ -1,22 +1,36 @@
-from datetime import datetime
-from functools import lru_cache
-
-import numpy as np
-import torch
-import torch.nn as nn
-from helpers import infer, get_strings
-from loss import BboxLoss
-from modeling.warped_model import LitLayoutParsing
+from tqdm import tqdm
+from models.base import LitLayoutParsing
+from models.loss import BboxLoss
 from pytorch_lightning import LightningModule
+import torch.nn as nn
+from torch import Tensor
+import numpy as np
+from helpers import infer, get_strings
+from functools import lru_cache
 from torch import optim
 from torch.optim import lr_scheduler
-from tqdm import tqdm
+import torch
+from datetime import datetime
 from transformers import AutoTokenizer
-
 print = tqdm.write
 
 tokenizer = AutoTokenizer.from_pretrained("microsoft/layoutlm-base-uncased")
 
+
+@lru_cache
+def extend_matrix(matrix:Tensor):
+    matrix = matrix.cpu().numpy()
+    matrix_s = [[0] + list(x) + [0] for x in list(matrix)]
+    t_m = list(np.zeros_like(matrix_s[0]))
+    _s = [t_m] + list(matrix_s) + [t_m]
+
+    return np.array(_s, dtype='int8')
+
+@lru_cache
+def extend_label(label_: Tensor):
+    label_ = label_.cpu().numpy()
+    label = [[0] + list(x) + [0] for x in list(label_)]
+    return np.array(label, dtype='int')
 
 class LitBaseParsing(LightningModule):
     def __init__(self):
@@ -25,28 +39,12 @@ class LitBaseParsing(LightningModule):
         self.loss_clss = nn.CrossEntropyLoss()
         self.bbox_loss_fn = BboxLoss()
         
-
-    @lru_cache
-    def extend_matrix(self, matrix):
-        matrix = matrix.cpu().numpy()
-        matrix_s = [[0] + list(x) + [0] for x in list(matrix)]
-        t_m = list(np.zeros_like(matrix_s[0]))
-        _s = [t_m] + list(matrix_s) + [t_m]
-
-        return np.array(_s, dtype='int8')
-
-    @lru_cache
-    def extend_label(self, label_):
-        label_ = label_.cpu().numpy()
-        label = [[0] + list(x) + [0] for x in list(label_)]
-        return np.array(label, dtype='int')
-
-    def forward(self, x: tuple) -> None:
-        input_ids, attention_mask, token_type_ids, bbox, maps = x
-        S, G = self.model((input_ids, attention_mask,
-                          token_type_ids, bbox, maps))
-        return S, G
-
+    def forward(self, input_ids: Tensor, attention_mask: Tensor,
+        token_type_ids:Tensor, bbox:Tensor, maps:Tensor) -> Tensor:
+        S_G_graph = self.model(input_ids, attention_mask,
+                          token_type_ids, bbox, maps)
+        return S_G_graph
+    
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=3e-5)
         def lf(x): return (1 - x / 81) * (1.0 - 0.1) + 0.1  # linear
@@ -59,7 +57,8 @@ class LitBaseParsing(LightningModule):
                     "monitor": "metric_to_track"
                 }
                 }
-
+        
+    
     def training_step(self, batch, batch_idx) -> None:
         bbox = batch["bbox"].squeeze(0)
         maps = batch['maps']
@@ -68,23 +67,26 @@ class LitBaseParsing(LightningModule):
         token_type_ids = batch['token_type_ids'].squeeze(0)
         # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
         ex_bboxes = bbox.squeeze(0)/1000
-        S, G = self.forward(
-            (input_ids, attention_mask, token_type_ids, bbox, maps)
+        S_G_graph = self.forward(
+            input_ids, attention_mask, token_type_ids, bbox, maps
         )
+        S = S_G_graph[0].unsqueeze(0)
+        G = S_G_graph[1].unsqueeze(0)
+        
         s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
         g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
         graph = torch.tensor(batch['label']).cuda()
         
-        S_ = self.extend_matrix(graph[0, 3:, :])
-        G_ = self.extend_matrix(graph[1, 3:, :])
+        S_ = extend_matrix(graph[0, 3:, :])
+        G_ = extend_matrix(graph[1, 3:, :])
         # GROUND TRUTH
-        label_s = torch.tensor(self.extend_label(
+        label_s = torch.tensor(extend_label(
             graph[0, :3, :])).unsqueeze(0).cuda()
-        label_g = torch.tensor(self.extend_label(
+        label_g = torch.tensor(extend_label(
             graph[1, :3, :])).unsqueeze(0).cuda()
-        matrix_s = torch.tensor(self.extend_matrix(
+        matrix_s = torch.tensor(extend_matrix(
             graph[0, 3:, :])).unsqueeze(0).cuda()
-        matrix_g = torch.tensor(self.extend_matrix(
+        matrix_g = torch.tensor(extend_matrix(
             graph[1, 3:, :])).unsqueeze(0).cuda()
         label_actual = label_s.squeeze(0)
         
@@ -128,17 +130,7 @@ class LitBaseParsing(LightningModule):
         self.log('Train/loss_matrix_g', loss_matrix_g.detach())
 
         return loss
-
-    def on_train_epoch_start(self) -> None:
-        print('#########[TRAINING]###################\n')
-        return super().on_train_epoch_start()
-
-    def on_validation_epoch_start(self) -> None:
-        print('#########[VALIDATING]###################\n')
-        return super().on_validation_epoch_start()
-
-    # def loss_LP(self,graph):
-        
+    
     @torch.no_grad()
     def validation_step(self, batch, batch_idx) -> None:
         if (self.current_epoch % 2 == 0):
@@ -150,27 +142,29 @@ class LitBaseParsing(LightningModule):
             token_type_ids = batch['token_type_ids'].squeeze(0)
             ex_bboxes = bbox.squeeze(0)/1000
             # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
-            S, G = self.forward(
-                (input_ids, attention_mask, token_type_ids, bbox, maps)
+            S_G_graph = self.forward(
+            input_ids, attention_mask, token_type_ids, bbox, maps
             )
+            S = S_G_graph[0].unsqueeze(0)
+            G = S_G_graph[1].unsqueeze(0)
 
             s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
             g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
             graph = torch.tensor(batch['label']).cuda()
 
             # GROUND TRUTH
-            label_s = torch.tensor(self.extend_label(
+            label_s = torch.tensor(extend_label(
                 graph[0, :3, :])).unsqueeze(0).cuda()
-            label_g = torch.tensor(self.extend_label(
+            label_g = torch.tensor(extend_label(
                 graph[1, :3, :])).unsqueeze(0).cuda()
-            matrix_s = torch.tensor(self.extend_matrix(
+            matrix_s = torch.tensor(extend_matrix(
                 graph[0, 3:, :])).unsqueeze(0).cuda()
-            matrix_g = torch.tensor(self.extend_matrix(
+            matrix_g = torch.tensor(extend_matrix(
                 graph[1, 3:, :])).unsqueeze(0).cuda()
         
             label_actual = label_s.squeeze(0)
-            S_ = self.extend_matrix(graph[0, 3:, :])
-            G_ = self.extend_matrix(graph[1, 3:, :])
+            S_ = extend_matrix(graph[0, 3:, :])
+            G_ = extend_matrix(graph[1, 3:, :])
             question_heads = [i for i, ele in enumerate(label_actual[0]) if ele != 0]
             answer_heads = [i for i, ele in enumerate(label_actual[1]) if ele != 0]
             header_heads = [i for i, ele in enumerate(label_actual[2]) if ele != 0]

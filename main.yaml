@@ -7,3 +7,6 @@ data_train_path: ./data/processed/data_train_28_2_2023.jsonl
 data_test_path: ./data/processed/data_test_28_2_2023.jsonl
 epochs: 81
 numhead: 3
+
+onnx_exporter:
+  path: ./resources/onnx/
