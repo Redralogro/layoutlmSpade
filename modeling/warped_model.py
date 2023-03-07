@@ -5,7 +5,8 @@ from loss import BboxLoss
 from pytorch_lightning import LightningModule
 from modeling.spade_model import RelationTagger
 from transformers import LayoutLMModel
-
+from torch import Tensor
+import numpy as np
 
 class MyPositionEmbedding(nn.Module):
     def __init__(self, config, embed_size):
@@ -120,11 +121,36 @@ class LitLayoutParsing(LightningModule):
             reduce.append(ten)
         reduce = torch.stack(reduce).to(device)
         return reduce
+    
+    def reduce_shapev2(self, last_hidden_state, maps: Tensor):
+        eles, indices = maps.unique(return_counts=True)
+        # eles = eles.to('cpu')
+        device = last_hidden_state.device
+        reduce = []
+        for i in range(len(indices)):
+            ten = self.zeros_temp.to(device)
+            for j in range(indices[i]):
+                ten += last_hidden_state[0][i]
+            ten = ten/ indices.cpu().numpy()[i]
+            reduce.append(ten)
+        reduce = torch.stack(reduce).to(device) 
+        return reduce
 
-    def forward(self, x: tuple) -> None:
-        input_ids, attention_mask, token_type_ids, bbox, maps = x
+    def tranfer_maps(self, maps: Tensor):
+        maps = torch.squeeze(maps, 0)
+        # maps = maps.detach()
+        # m = [ item.item() -0 for item in maps]
+        # box_index =  np.unique(m).tolist()
+        m = np.array(maps.cpu())
+        m = m.tolist()
+        box_index =  np.unique(m).tolist()
+        return [[item]*m.count(item) for item in box_index]
+    
+    def forward(self, input_ids, attention_mask, token_type_ids, bbox,maps_tensor) -> None:
+        # input_ids, attention_mask, token_type_ids, bbox,maps_tensor = x
+        # maps,
+        
         outputs = self.model(input_ids=input_ids,bbox=bbox,attention_mask=attention_mask,token_type_ids=token_type_ids)
-
         # final feature
         last_hidden_state = self.ln(outputs.last_hidden_state)
         position_embeddings = self.pos_embs(bbox)
@@ -132,8 +158,10 @@ class LitLayoutParsing(LightningModule):
                                 position_embeddings,
                                 last_hidden_state
                             )
-
-        reduce = self.reduce_shape(last_hidden_state, maps)
+        
+        # maps = self.tranfer_maps(maps)
+        # reduce = self.reduce_shape(last_hidden_state, maps)
+        reduce = self.reduce_shapev2(last_hidden_state, maps_tensor)
 
         # s part
         S = self.rel_s(self.dropout(reduce.unsqueeze(0)))

@@ -9,8 +9,4 @@ epochs: 81
 numhead: 3
 
 onnx_exporter:
-<<<<<<< HEAD
-  path: ./resources/onnx
-=======
   path: ./resources/onnx/
->>>>>>> 9f1dd023b8eacd9eb6316eed4264a880142005c9

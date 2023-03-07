@@ -1,6 +1,6 @@
 from datetime import datetime
 from functools import lru_cache
-
+from torch import Tensor
 import numpy as np
 import torch
 import torch.nn as nn
@@ -41,10 +41,16 @@ class LitBaseParsing(LightningModule):
         label = [[0] + list(x) + [0] for x in list(label_)]
         return np.array(label, dtype='int')
 
-    def forward(self, x: tuple) -> None:
-        input_ids, attention_mask, token_type_ids, bbox, maps = x
-        S, G = self.model((input_ids, attention_mask,
-                          token_type_ids, bbox, maps))
+    def forward(self,input_ids, attention_mask, token_type_ids, bbox,
+            #   maps
+                maps_tensor) -> None:
+        # input_ids, attention_mask, token_type_ids, bbox,maps_tensor  = x
+        # maps,
+        
+        S, G = self.model(input_ids, attention_mask,
+                          token_type_ids, bbox,
+                            # maps ,
+                            maps_tensor )
         return S, G
 
     def configure_optimizers(self):
@@ -60,16 +66,21 @@ class LitBaseParsing(LightningModule):
                 }
                 }
 
+    def transform_data(self,t: Tensor):
+        return torch.tensor(t).long()
+
     def training_step(self, batch, batch_idx) -> None:
-        bbox = batch["bbox"].squeeze(0)
-        maps = batch['maps']
-        input_ids = batch['input_ids'].squeeze(0)
-        attention_mask = batch['attention_mask'].squeeze(0)
-        token_type_ids = batch['token_type_ids'].squeeze(0)
+        bbox = self.transform_data(batch["bbox"].squeeze(0)) 
+        input_ids = self.transform_data(batch['input_ids'].squeeze(0)) 
+        attention_mask = self.transform_data(batch['attention_mask'].squeeze(0)) 
+        token_type_ids = self.transform_data(batch['token_type_ids'].squeeze(0)) 
+        maps_tensor = self.transform_data(batch['maps_tensor'].squeeze(0)) 
         # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
         ex_bboxes = bbox.squeeze(0)/1000
         S, G = self.forward(
-            (input_ids, attention_mask, token_type_ids, bbox, maps)
+            input_ids, attention_mask, token_type_ids, bbox,
+            #   maps
+                maps_tensor
         )
         s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
         g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
@@ -114,12 +125,7 @@ class LitBaseParsing(LightningModule):
         loss_matrix_g = self.loss_clss(g1, matrix_g.long())
         loss = loss_label_s + loss_matrix_s + loss_label_g + loss_matrix_g + bbox_loss
 
-        # print('loss', loss.detach())
-        # print('loss_label_s', loss_label_s.detach())
-        # print('loss_label_g', loss_label_g.detach())
-        # print('loss_matrix_s', loss_matrix_s.detach())
-        # print('loss_matrix_g', loss_matrix_g.detach())
-        # print('loss_bboxes', bbox_loss.detach())
+
         self.log('Train/loss', loss.detach())
         self.log('Train/loss_bboxes', bbox_loss.detach())
         self.log('Train/loss_label_s', loss_label_s.detach())
@@ -143,15 +149,17 @@ class LitBaseParsing(LightningModule):
     def validation_step(self, batch, batch_idx) -> None:
         if (self.current_epoch % 2 == 0):
 
-            bbox = batch["bbox"].squeeze(0)
-            maps = batch['maps']
-            input_ids = batch['input_ids'].squeeze(0)
-            attention_mask = batch['attention_mask'].squeeze(0)
-            token_type_ids = batch['token_type_ids'].squeeze(0)
+            bbox = self.transform_data(batch["bbox"].squeeze(0)) 
+            input_ids = self.transform_data(batch['input_ids'].squeeze(0)) 
+            attention_mask = self.transform_data(batch['attention_mask'].squeeze(0)) 
+            token_type_ids = self.transform_data(batch['token_type_ids'].squeeze(0)) 
+            maps_tensor = self.transform_data(batch['maps_tensor'].squeeze(0))
             ex_bboxes = bbox.squeeze(0)/1000
             # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
             S, G = self.forward(
-                (input_ids, attention_mask, token_type_ids, bbox, maps)
+                input_ids, attention_mask, token_type_ids, bbox,
+                #   maps,
+                    maps_tensor
             )
 
             s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
