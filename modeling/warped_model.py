@@ -88,6 +88,7 @@ class LitLayoutParsing(LightningModule):
             self.model.config, self.reduce_size)
 
         self.ln = nn.Linear(self.model.config.hidden_size, self.reduce_size)
+        self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.1)
         self.zeros_temp = torch.zeros(self.reduce_size)
 
@@ -146,13 +147,19 @@ class LitLayoutParsing(LightningModule):
         box_index =  np.unique(m).tolist()
         return [[item]*m.count(item) for item in box_index]
     
-    def forward(self, input_ids, attention_mask, token_type_ids, bbox,maps_tensor) -> None:
-        # input_ids, attention_mask, token_type_ids, bbox,maps_tensor = x
+    def forward(self,
+                # input_ids, attention_mask, token_type_ids, bbox,maps_tensor
+                x:tuple
+                ) -> None:
+        input_ids, attention_mask, token_type_ids, bbox,maps = x
         # maps,
         
         outputs = self.model(input_ids=input_ids,bbox=bbox,attention_mask=attention_mask,token_type_ids=token_type_ids)
         # final feature
         last_hidden_state = self.ln(outputs.last_hidden_state)
+        device = last_hidden_state.device
+        m = nn.BatchNorm1d(last_hidden_state.shape[1] , affine=False).to(device)
+        last_hidden_state = m(last_hidden_state).to(device)
         position_embeddings = self.pos_embs(bbox)
         last_hidden_state = self.rel_attn(
                                 position_embeddings,
@@ -160,8 +167,8 @@ class LitLayoutParsing(LightningModule):
                             )
         
         # maps = self.tranfer_maps(maps)
-        # reduce = self.reduce_shape(last_hidden_state, maps)
-        reduce = self.reduce_shapev2(last_hidden_state, maps_tensor)
+        reduce = self.reduce_shape(last_hidden_state, maps)
+        # reduce = self.reduce_shapev2(last_hidden_state, maps_tensor)
 
         # s part
         S = self.rel_s(self.dropout(reduce.unsqueeze(0)))

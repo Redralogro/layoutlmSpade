@@ -3,6 +3,7 @@ import random
 import json
 import numpy as np
 from typing import List
+from copy import deepcopy
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -217,50 +218,31 @@ def add_noise(data,mask_sympbol):
 
 #####################################################
 
+def augment_data(data):
+    data1 = [{'text': item['text'], 'label':item['label'],
+                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
+                  'coord':item['coord']} for item in deepcopy(data)]
+    
+    data2 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
+                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
+                  'coord':inverse(item)['coord']} for item in deepcopy(data)]
+    
+    data3 = [{'text': item['text'], 'label':item['label'],
+                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
+                  'coord': move_box(item)['coord']} for item in deepcopy(data)]
+
+    data4 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
+                'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
+                'coord':move_box(inverse(item))['coord']} for item in deepcopy(data)]
+
+    return data1 + data3 + data4 + data2
 
 def get_data(PATH):
-        from copy import deepcopy
-        # with open(self.path,'r', encoding ='utf8') as f:
+        
         f = open(PATH, 'r', encoding='utf8')
         root_data_ = [json.loads(s) for s in f.readlines()]
         f.close()
-        # with open(PATH, 'r', encoding='utf8') as f:
-        #     root_data_ = [json.loads(s) for s in f.readlines()]
-        # root_data_ = json.load(open(self.path))
-        shuffle_data = [shufflev2(item) for item in deepcopy(root_data_)]
-
-        data1 = [{'text': item['text'], 'label':item['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':item['coord']} for item in deepcopy(root_data_)]
-
-        data2 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':inverse(item)['coord']} for item in deepcopy(root_data_)]
-
-        data3 = [{'text': item['text'], 'label':item['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord': move_box(item)['coord']} for item in deepcopy(root_data_)]
-
-        data4 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':move_box(inverse(item))['coord']} for item in deepcopy(root_data_)]
-
-        data5 = [{'text': item['text'], 'label':item['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':item['coord']} for item in deepcopy(shuffle_data)]
-
-        data6 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':inverse(item)['coord']} for item in deepcopy(shuffle_data)]
-
-        data7 = [{'text': item['text'], 'label':item['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord': move_box(item)['coord']} for item in deepcopy(shuffle_data)]
-
-        data8 = [{'text': inverse(item)['text'], 'label':inverse(item)['label'],
-                 'size':[int(item['img_sz']['width']), int(item['img_sz']['height'])],
-                  'coord':move_box(inverse(item))['coord']} for item in deepcopy(shuffle_data)]
-
-        data = data1  + data2 + data3 + data4 + data5 + data6 + data7 + data8
+        
+        data = augment_data(root_data_) #+ augment_data(shuffle_data)
 
         return data

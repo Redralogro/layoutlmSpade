@@ -19,7 +19,6 @@ def get_strings(heads, data: list, graph):
     try:
         for index in heads:
             dfs = list(nx.dfs_edges(G, source=int(index)))
-            dfs
             if  dfs == []:
                 header = [int(index)]
             else: header =  [dfs[0][0]] + [x[1]  for i,x in enumerate (dfs)]

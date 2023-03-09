@@ -41,16 +41,19 @@ class LitBaseParsing(LightningModule):
         label = [[0] + list(x) + [0] for x in list(label_)]
         return np.array(label, dtype='int')
 
-    def forward(self,input_ids, attention_mask, token_type_ids, bbox,
-            #   maps
-                maps_tensor) -> None:
-        # input_ids, attention_mask, token_type_ids, bbox,maps_tensor  = x
+    def forward(self,
+            #     input_ids, attention_mask, token_type_ids, bbox,
+            # #   maps
+            #     maps_tensor
+                x:tuple
+                ) -> None:
+        input_ids, attention_mask, token_type_ids, bbox,maps = x
         # maps,
         
-        S, G = self.model(input_ids, attention_mask,
+        S, G = self.model((input_ids, attention_mask,
                           token_type_ids, bbox,
                             # maps ,
-                            maps_tensor )
+                            maps ))
         return S, G
 
     def configure_optimizers(self):
@@ -75,12 +78,15 @@ class LitBaseParsing(LightningModule):
         attention_mask = self.transform_data(batch['attention_mask'].squeeze(0)) 
         token_type_ids = self.transform_data(batch['token_type_ids'].squeeze(0)) 
         maps_tensor = self.transform_data(batch['maps_tensor'].squeeze(0)) 
+        maps = batch['maps']
+        # text = batch['text']
         # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
         ex_bboxes = bbox.squeeze(0)/1000
         S, G = self.forward(
-            input_ids, attention_mask, token_type_ids, bbox,
-            #   maps
-                maps_tensor
+            (input_ids, attention_mask, token_type_ids, bbox,
+              maps
+                # maps_tensor
+                )
         )
         s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
         g0, g1 = G[:, :, :3, :], G[:, :, 3:, :]
@@ -114,7 +120,7 @@ class LitBaseParsing(LightningModule):
             i for i, ele in enumerate(pred_label[0]) if ele != 0]
         pred_answer_heads = [
             i for i, ele in enumerate(pred_label[1]) if ele != 0]
-        bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes, (question_heads,
+        bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes,batch['text'], (question_heads,
                                                               answer_heads,
                                                               pred_question_heads,
                                                               pred_answer_heads))
@@ -147,19 +153,22 @@ class LitBaseParsing(LightningModule):
         
     @torch.no_grad()
     def validation_step(self, batch, batch_idx) -> None:
-        if (self.current_epoch % 2 == 0):
+        
 
             bbox = self.transform_data(batch["bbox"].squeeze(0)) 
             input_ids = self.transform_data(batch['input_ids'].squeeze(0)) 
             attention_mask = self.transform_data(batch['attention_mask'].squeeze(0)) 
             token_type_ids = self.transform_data(batch['token_type_ids'].squeeze(0)) 
             maps_tensor = self.transform_data(batch['maps_tensor'].squeeze(0))
+            
+            maps = batch['maps']
             ex_bboxes = bbox.squeeze(0)/1000
             # normalized_word_boxes = batch['normalized_word_boxes'].squeeze(0)
             S, G = self.forward(
-                input_ids, attention_mask, token_type_ids, bbox,
-                #   maps,
-                    maps_tensor
+                (input_ids, attention_mask, token_type_ids, bbox,
+                  maps,
+                    # maps_tensor
+                    )
             )
 
             s0, s1 = S[:, :, :3, :], S[:, :, 3:, :]
@@ -196,7 +205,7 @@ class LitBaseParsing(LightningModule):
                 i for i, ele in enumerate(pred_label[0]) if ele != 0]
             pred_answer_heads = [
                 i for i, ele in enumerate(pred_label[1]) if ele != 0]
-            bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes, (question_heads,
+            bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes,batch['text'], (question_heads,
                                                                 answer_heads,
                                                                 pred_question_heads,
                                                                 pred_answer_heads))
@@ -215,15 +224,17 @@ class LitBaseParsing(LightningModule):
             self.log('Val/loss_matrix_g', loss_matrix_g.detach())
             
             
-            ques = get_strings(question_heads, text, S_)
-            ans = get_strings(answer_heads, text, S_)
             
-            print(f'[GROUND TRUTH]: Ques:{ques} \n Ans: {ans}')
-            print('\n ###############################')
             # # PREDICT
-            infer(S, G, text)
+            if (self.current_epoch % 2 == 0):
+                ques = get_strings(question_heads, text, S_)
+                ans = get_strings(answer_heads, text, S_)
+                
+                print(f'[GROUND TRUTH]: Ques:{ques} \n Ans: {ans}')
+                print('\n ###############################')
+                infer(S, G, text)
 
-        return 0
+            return 0
 
     def validation_epoch_end(self, validation_step_outputs) -> None:
         if (self.current_epoch > 0 and self.current_epoch % 40 == 0):

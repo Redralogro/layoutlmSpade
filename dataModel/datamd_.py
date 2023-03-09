@@ -2,7 +2,7 @@ import random
 from functools import lru_cache
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer
-from dataModel.helpers import handle_input, get_data, add_noise
+from dataModel.helpers import handle_input, get_data, add_noise, shufflev2
 
 @lru_cache
 def load_tokenizer():
@@ -18,13 +18,14 @@ class DpDataSet(Dataset):
         return len(self.items)
     
     def __getitem__(self, idx):
-        mask_sympbol = random.choices([x for x in [" ",","]])
-        items = add_noise(self.items[idx], mask_sympbol) 
+        # mask_sympbol = random.choices([x for x in [" ",","]])
+        # items = add_noise(self.items[idx], mask_sympbol) 
+        items = shufflev2(self.items[idx])
         input_ids, attention_mask, token_type_ids, bbox, maps, maps_tensor = handle_input(self.tokenizer,
             items['text'], items['coord'], items['size'])
 
         return {'bbox': bbox, 'label': self.items[idx]['label'],
-                # 'maps': maps,
+                'maps': maps,
                 'maps_tensor': maps_tensor,
                 'input_ids': input_ids, 'bbox': bbox, 'attention_mask': attention_mask,
                 'token_type_ids': token_type_ids, 'text': self.items[idx]['text']}
