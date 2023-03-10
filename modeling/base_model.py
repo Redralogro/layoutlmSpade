@@ -120,7 +120,7 @@ class LitBaseParsing(LightningModule):
             i for i, ele in enumerate(pred_label[0]) if ele != 0]
         pred_answer_heads = [
             i for i, ele in enumerate(pred_label[1]) if ele != 0]
-        bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes,batch['text'], (question_heads,
+        bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes,[x[0]for x in batch["text"]], (question_heads,
                                                               answer_heads,
                                                               pred_question_heads,
                                                               pred_answer_heads))
@@ -205,7 +205,7 @@ class LitBaseParsing(LightningModule):
                 i for i, ele in enumerate(pred_label[0]) if ele != 0]
             pred_answer_heads = [
                 i for i, ele in enumerate(pred_label[1]) if ele != 0]
-            bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes,batch['text'], (question_heads,
+            bbox_loss = self.bbox_loss_fn(S_, pred_S, ex_bboxes,[x[0]for x in batch["text"]], (question_heads,
                                                                 answer_heads,
                                                                 pred_question_heads,
                                                                 pred_answer_heads))

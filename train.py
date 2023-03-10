@@ -27,7 +27,9 @@ trainer = Trainer(accelerator='gpu',
                   auto_lr_find=False,
                   auto_scale_batch_size='binsearch',
                   callbacks=[lr_monitor],
-                  log_every_n_steps=5
+                  log_every_n_steps=5,
+                  gradient_clip_val=0.5,
+                  gradient_clip_algorithm="value"
                   )
 
 
